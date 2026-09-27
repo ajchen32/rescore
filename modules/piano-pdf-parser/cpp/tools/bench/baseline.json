@@ -1,0 +1,23 @@
+{
+ "desktop_median_ms": 38.28,
+ "views": {
+  "hidden": {
+   "pages": 228,
+   "strips": 1222,
+   "clean_pct": 53.0,
+   "clean_1mm_pct": 69.9,
+   "clips": 4155,
+   "ink_not_shown_pct": 1.45,
+   "strip_px": 591708
+  },
+  "full": {
+   "pages": 228,
+   "strips": 1222,
+   "clean_pct": 41.7,
+   "clean_1mm_pct": 59.4,
+   "clips": 6751,
+   "ink_not_shown_pct": 1.45,
+   "strip_px": 591708
+  }
+ }
+}

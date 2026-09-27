@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "piano-pdf-parser-core": [
+        "./modules/piano-pdf-parser/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "modules/piano-pdf-parser/cpp/**",
+    "modules/piano-pdf-parser/ios/**",
+    "modules/piano-pdf-parser/android/**"
+  ]
+}

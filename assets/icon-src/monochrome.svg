@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1024" height="1024">
+<g transform="translate(562 506) scale(0.93) translate(-552 -528)">
+<rect x="282" y="383" width="540" height="290" rx="28" fill="none" stroke="#000" stroke-width="14"/>
+<g transform="translate(0 0)">
+<line x1="372" y1="418" x2="372" y2="638" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="420" x2="790" y2="420" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="439" x2="790" y2="439" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="458" x2="790" y2="458" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="477" x2="790" y2="477" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="496" x2="790" y2="496" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="562" x2="790" y2="562" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="581" x2="790" y2="581" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="600" x2="790" y2="600" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="619" x2="790" y2="619" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+<line x1="372" y1="638" x2="790" y2="638" stroke="#000" stroke-width="9" stroke-linecap="round"/>
+</g>
+<g transform="translate(0 0)" fill="#000"><path d="M368 410 C328 416 346 498 306 528 C384 502 348 430 368 410 Z"/><path d="M368 410 C328 416 346 498 306 528 C384 502 348 430 368 410 Z" transform="translate(0 1056) scale(1 -1)"/></g>
+</g>
+</svg>

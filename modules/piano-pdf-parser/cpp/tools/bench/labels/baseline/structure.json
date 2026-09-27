@@ -1,0 +1,964 @@
+[
+ {
+  "id": "d00_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strip S1 covering cover page"
+  ]
+ },
+ {
+  "id": "d00_p031",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S2 top edge cuts section heading text 'B Major Cadences'",
+   "S3/S4 top edges clip 'root position' labels",
+   "section headings partly outside strips"
+  ]
+ },
+ {
+  "id": "d00_p062",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "S1 is non-music strip (title/header text)",
+   "S2 top slightly clips high fingering numbers"
+  ]
+ },
+ {
+  "id": "d01_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "non-music strip S1 of title; S1/S2 edge cuts through subtitle line",
+   "footnote text below S6 excluded"
+  ]
+ },
+ {
+  "id": "d01_p003",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d01_p005",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": [
+   "S4 top near 8va marking"
+  ]
+ },
+ {
+  "id": "d02_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strips S1-S4 of title page text"
+  ]
+ },
+ {
+  "id": "d02_p033",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S1 bottom clips pedal markings",
+   "S2 bottom clips low note/pedal star"
+  ]
+ },
+ {
+  "id": "d02_p065",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S1 top clips 'a tempo' text",
+   "S2 bottom clips Ped marking",
+   "S3 bottom clips low notes/Ped"
+  ]
+ },
+ {
+  "id": "d03_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title/header not in any strip (fine)",
+   "S2 top clips high notes/tuplet above treble"
+  ]
+ },
+ {
+  "id": "d03_p002",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d03_p004",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S4 top clips 'lunga' text/fermata"
+  ]
+ },
+ {
+  "id": "d04_p001",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1"
+  ]
+ },
+ {
+  "id": "d04_p005",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "non-music strip S4 containing only pedal marks of S3",
+   "S5 top clips 'Moderato cantabile' text",
+   "8va line above S2 outside strip"
+  ]
+ },
+ {
+  "id": "d04_p010",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d05_p001",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": [
+   "title and tempo absorbed into S1",
+   "S1 bottom clips bass fingerings",
+   "S4 bottom very tight to bass staff, clips fingerings"
+  ]
+ },
+ {
+  "id": "d05_p002",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": [
+   "S3 bottom clips low fingering/ledger notes",
+   "S6 bottom clips low bass ledger notes (C. below staff) into S7",
+   "S7 top contains S6 low notes"
+  ]
+ },
+ {
+  "id": "d05_p003",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S3 top clips fingering numbers"
+  ]
+ },
+ {
+  "id": "d06_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strips S1-S2 of title page"
+  ]
+ },
+ {
+  "id": "d06_p007",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S2 bottom clips low bass notes/slurs",
+   "non-music strip S5 of footer plate number"
+  ]
+ },
+ {
+  "id": "d06_p013",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1"
+  ]
+ },
+ {
+  "id": "d07_p001",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S1 bottom clips pedal marks and low ledger notes (pushed into S2 top)"
+  ]
+ },
+ {
+  "id": "d07_p003",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1 includes tempo marking 'Poco piu mosso'"
+  ]
+ },
+ {
+  "id": "d07_p005",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1 bottom clips low ledger notes; S1 pedal marks fall into S2"
+  ]
+ },
+ {
+  "id": "d08_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strip S1 of cover text/ornament"
+  ]
+ },
+ {
+  "id": "d08_p021",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "two-piano layout (4 staves per system)",
+   "S1 bottom clips low ledger notes"
+  ]
+ },
+ {
+  "id": "d08_p042",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "two-piano layout, 4 staves per system",
+   "footer absorbed into S4"
+  ]
+ },
+ {
+  "id": "d09_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "title page; 4 non-music strips S1-S4"
+  ]
+ },
+ {
+  "id": "d09_p017",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d09_p033",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d10_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title/dedication absorbed into S1",
+   "S1 bottom near low ledger notes of m.4 bass"
+  ]
+ },
+ {
+  "id": "d10_p002",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1 bottom clips low ledger notes/beam"
+  ]
+ },
+ {
+  "id": "d10_p003",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": [
+   "S3/S4 bottoms slightly clip low ledger notes"
+  ]
+ },
+ {
+  "id": "d11_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "title page; 3 non-music strips S1-S3"
+  ]
+ },
+ {
+  "id": "d11_p036",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "title/header (page no., Andante, No.4) absorbed into S1"
+  ]
+ },
+ {
+  "id": "d11_p072",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "title/header absorbed into S1",
+   "S1 bottom clips low note stem"
+  ]
+ },
+ {
+  "id": "d12_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strips S1-S6 of cover text"
+  ]
+ },
+ {
+  "id": "d12_p105",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "footnote ossia example at bottom not in any strip (not a system)"
+  ]
+ },
+ {
+  "id": "d12_p209",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1 bottom clips low ledger notes",
+   "S3 bottom clips low notes",
+   "footnote absorbed into S6"
+  ]
+ },
+ {
+  "id": "d13_p001",
+  "music": true,
+  "systems": 6,
+  "correct": 5,
+  "errors": [
+   "missed: system 1 (first system under title, mm.1-9) not in any strip"
+  ],
+  "minor": [
+   "S3 bottom clips low ledger notes/slurs"
+  ]
+ },
+ {
+  "id": "d13_p007",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S3 bottom clips low beams",
+   "S4 bottom clips low beams"
+  ]
+ },
+ {
+  "id": "d13_p014",
+  "music": true,
+  "systems": 6,
+  "correct": 5,
+  "errors": [
+   "missed: first system (under title 'III. Allegro') not in any strip"
+  ],
+  "minor": []
+ },
+ {
+  "id": "d14_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title/header absorbed into S1",
+   "pedal marks straddle S1/S2, S2/S3, S4/S5 boundaries",
+   "S3 top clips handwritten a tempo annotation"
+  ]
+ },
+ {
+  "id": "d14_p005",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S4 bottom clips pedal marks",
+   "S1 top clips handwritten annotation"
+  ]
+ },
+ {
+  "id": "d14_p010",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S4 bottom clips Ped/sf markings",
+   "S5 bottom clips low notes; Ped markings fall into S6"
+  ]
+ },
+ {
+  "id": "d15_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "title page; 5 non-music strips S1-S5"
+  ]
+ },
+ {
+  "id": "d15_p094",
+  "music": true,
+  "systems": 6,
+  "correct": 5,
+  "errors": [
+   "missed: first system (with 'No. 5', Allegro molto e con brio) not in any strip"
+  ],
+  "minor": [
+   "title text above first system also not covered (fine)"
+  ]
+ },
+ {
+  "id": "d15_p188",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": [
+   "S3/S4 bottoms clip low notes/fermata"
+  ]
+ },
+ {
+  "id": "d16_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strips S1-S4 of cover"
+  ]
+ },
+ {
+  "id": "d16_p014",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S1/S2 boundary clips fermata/slur tops"
+  ]
+ },
+ {
+  "id": "d16_p027",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S1/S2 bottoms clip fingering numbers"
+  ]
+ },
+ {
+  "id": "d17_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "title page with contents list; 5 non-music strips S1-S5"
+  ]
+ },
+ {
+  "id": "d17_p005",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S7 is a small footnote ossia excerpt (variant of S6 ending) plus footer; counted as non-system",
+   "S6 bottom absorbs top notes of ossia",
+   "S4 bottom edge tight on bass staff bottom line; pedal marks in S5"
+  ]
+ },
+ {
+  "id": "d17_p009",
+  "music": true,
+  "systems": 7,
+  "correct": 7,
+  "errors": [],
+  "minor": [
+   "S5 and S7 tops clip high ledger notes"
+  ]
+ },
+ {
+  "id": "d18_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strips S1-S2 of cover"
+  ]
+ },
+ {
+  "id": "d18_p003",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S4 low bass notes/beams spill into S5 top"
+  ]
+ },
+ {
+  "id": "d18_p005",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "S2 bottom clips low ledger notes",
+   "Ped markings below S4 excluded"
+  ]
+ },
+ {
+  "id": "d19_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title not in any strip (fine)"
+  ]
+ },
+ {
+  "id": "d19_p004",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d19_p008",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d20_p001",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1"
+  ]
+ },
+ {
+  "id": "d20_p004",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "'Piu vivo' text above S1 outside strip"
+  ]
+ },
+ {
+  "id": "d20_p007",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d21_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "pedal markings below S2/S3/S4 fall at/over strip edges into next strip"
+  ]
+ },
+ {
+  "id": "d21_p003",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d21_p005",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S4 top clips 8va marking"
+  ]
+ },
+ {
+  "id": "d22_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strips S1-S3 of title text"
+  ]
+ },
+ {
+  "id": "d22_p006",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "systems S2-S4 are 3-staff piano systems",
+   "S1 bottom clips hand annotations",
+   "non-music strip S5 of footer text"
+  ]
+ },
+ {
+  "id": "d22_p011",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S2/S3 bottoms clip low arpeggio notes"
+  ]
+ },
+ {
+  "id": "d23_p001",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1 top clips 8va line/high beams",
+   "S3 top clips high notes (8va line in S2)",
+   "piece title '5. Trepak' cut at S3/S4 edge",
+   "S3 bottom includes low ledger note"
+  ]
+ },
+ {
+  "id": "d23_p006",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1 bottom clips/contains 'Andante maestoso' heading partially at S2 top",
+   "S3/S4/S5 bottom edges sit exactly on bottom bass staff line (borderline); low notes spill into next strip"
+  ]
+ },
+ {
+  "id": "d23_p011",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "S1/S2/S3 bottoms clip low ledger notes"
+  ]
+ },
+ {
+  "id": "d24_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "footer text 'Arranged By' absorbed into S5"
+  ]
+ },
+ {
+  "id": "d24_p002",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "footer text absorbed into S5"
+  ]
+ },
+ {
+  "id": "d24_p003",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "footer absorbed into S5"
+  ]
+ },
+ {
+  "id": "d25_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "illustrated cover; 5 non-music strips S1-S5"
+  ]
+ },
+ {
+  "id": "d25_p003",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d25_p005",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S3/S4 bottoms clip pedal markings"
+  ]
+ },
+ {
+  "id": "d26_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strip S1 of cover"
+  ]
+ },
+ {
+  "id": "d26_p006",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S1 top clips long slur"
+  ]
+ },
+ {
+  "id": "d26_p011",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "slurs above S2/S4/S5 slightly clipped"
+  ]
+ },
+ {
+  "id": "d27_p001",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "cover art; 1 non-music strip S1"
+  ]
+ },
+ {
+  "id": "d27_p003",
+  "music": false,
+  "systems": 0,
+  "correct": 0,
+  "errors": [],
+  "minor": [
+   "non-music strip S1 covering whole text page"
+  ]
+ },
+ {
+  "id": "d27_p006",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": []
+ },
+ {
+  "id": "d28_p001",
+  "music": true,
+  "systems": 4,
+  "correct": 4,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S1/S2 boundary clips slurs above S2 treble"
+  ]
+ },
+ {
+  "id": "d28_p004",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S2 top edge cuts 'piu dim'/'I tempo' text",
+   "'dim. molto e rit.' above S1 outside strip"
+  ]
+ },
+ {
+  "id": "d28_p008",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S3 top clips high notes",
+   "S4 bottom clips low ledger notes"
+  ]
+ },
+ {
+  "id": "d29_p001",
+  "music": true,
+  "systems": 6,
+  "correct": 6,
+  "errors": [],
+  "minor": [
+   "title absorbed into S1",
+   "S1/S2 bottoms clip low notes/accents",
+   "copyright footer absorbed into S6"
+  ]
+ },
+ {
+  "id": "d29_p011",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S1,S2 are 3-staff systems; captured whole"
+  ]
+ },
+ {
+  "id": "d29_p022",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S1 top clips 'piu p'",
+   "S2 bottom clips 'pp'"
+  ]
+ },
+ {
+  "id": "d30_p001",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "header/title absorbed into S1"
+  ]
+ },
+ {
+  "id": "d30_p006",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "non-music strip S1 of header text",
+   "S2 and S6 bottom clip pedal marks"
+  ]
+ },
+ {
+  "id": "d30_p011",
+  "music": true,
+  "systems": 5,
+  "correct": 5,
+  "errors": [],
+  "minor": [
+   "S5 bottom clips Ped markings"
+  ]
+ }
+]
