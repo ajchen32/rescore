@@ -2,7 +2,11 @@
 
 Read piano sheet music on a phone. Rescore takes a PDF, a scan or photos of a score and splits each page into one strip per line of music. It then shows those strips full-width, a few at a time, so the notes stay large enough to read at the piano. Everything runs on the device, with no upload and no server.
 
-<p align="center"><img src="docs/demo.gif" width="320" alt="Importing Chopin's Fantaisie-Impromptu, slicing it into strips, splitting one strip and reading on"></p>
+<p align="center">
+  <img src="docs/demo.gif" width="260" alt="Importing Chopin's Fantaisie-Impromptu, slicing it into strips, splitting one strip and reading on">
+  &nbsp;
+  <img src="docs/landscape.gif" width="520" alt="Reading the same score in landscape, changing from three strips per view to two">
+</p>
 
 ## Features
 
