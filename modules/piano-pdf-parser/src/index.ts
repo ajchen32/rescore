@@ -5,6 +5,7 @@ export type Strip = {
   width: number;
   height: number;
   pageIndex: number;
+  x0?: number;
   y0?: number;
 };
 

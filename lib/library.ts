@@ -14,6 +14,7 @@ export type SavedStrip = {
   width: number;
   height: number;
   pageIndex: number;
+  x0?: number;
   y0?: number;
   id?: string;
   parts?: SavedStrip[];
@@ -205,6 +206,7 @@ async function copyLeafStrip(
     width: strip.width,
     height: strip.height,
     pageIndex: strip.pageIndex,
+    x0: strip.x0,
     y0: strip.y0,
     id: strip.id,
   };
@@ -294,6 +296,7 @@ export function savedStripToReaderStrip(saved: SavedStrip): ReaderStrip {
     width: saved.width,
     height: saved.height,
     pageIndex: saved.pageIndex,
+    x0: saved.x0,
     y0: saved.y0,
   };
 

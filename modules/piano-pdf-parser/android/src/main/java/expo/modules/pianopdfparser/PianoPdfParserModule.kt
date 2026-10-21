@@ -553,6 +553,7 @@ class PianoPdfParserModule : Module() {
             "width" to stripWidth,
             "height" to stripHeight,
             "pageIndex" to pageIndex,
+            "x0" to range.x0,
             "y0" to range.y0,
           ),
         )
@@ -593,6 +594,7 @@ class PianoPdfParserModule : Module() {
             "width" to width,
             "height" to bandHeight,
             "pageIndex" to pageIndex,
+            "x0" to range.x0,
             "y0" to range.y0,
           ),
         )

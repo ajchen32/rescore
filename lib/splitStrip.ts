@@ -8,6 +8,7 @@ import {
   makeSplitPieces,
   mergedPartLayouts,
   mergedStackHeight,
+  mergedStackWidth,
   type ReaderStrip,
   type SplitPiece,
 } from "./corrections";
@@ -58,7 +59,7 @@ export function getStripStackSize(strip: ReaderStrip): { width: number; height: 
   }
 
   return {
-    width: Math.max(...parts.map((part) => part.width)),
+    width: mergedStackWidth(parts),
     height: mergedStackHeight(parts),
   };
 }
@@ -256,6 +257,7 @@ async function splitMergedStripAtRatios(
         width: cropped.width,
         height: cropped.height,
         pageIndex: part.pageIndex,
+        x0: part.x0,
         y0: part.y0 !== undefined ? part.y0 + localOriginY : undefined,
       });
     }

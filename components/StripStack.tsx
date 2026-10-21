@@ -1,7 +1,11 @@
 import { View } from "react-native";
 
 import { MusicImage } from "./MusicImage";
-import { mergedPartLayouts, type ReaderStrip } from "../lib/corrections";
+import {
+  mergedPartColumns,
+  mergedPartLayouts,
+  type ReaderStrip,
+} from "../lib/corrections";
 
 export function ClippedStripImage({
   uri,
@@ -68,6 +72,7 @@ export function StackedStripImages({
   inverted?: boolean;
 }) {
   const layouts = mergedPartLayouts(parts);
+  const columns = mergedPartColumns(parts);
   const totalStackSpan = layouts.reduce((sum, layout) => sum + layout.stackSpan, 0);
 
   return (
@@ -78,19 +83,28 @@ export function StackedStripImages({
             ? (layout.stackSpan / totalStackSpan) * height
             : height / layouts.length;
         const isLast = index === layouts.length - 1;
+        const partWidth = columns[index].widthFraction * width;
 
         return (
-          <ClippedStripImage
+          <View
             key={layout.part.id}
-            uri={layout.part.uri}
-            width={width}
-            height={partHeight}
-            hideBottomOverlapPx={
-              isLast ? hideBottomOverlapPx : layout.hideBottomOverlapPx
-            }
-            sourceHeight={layout.part.height}
-            inverted={inverted}
-          />
+            style={{
+              width: partWidth,
+              height: partHeight,
+              marginLeft: columns[index].leftFraction * width,
+            }}
+          >
+            <ClippedStripImage
+              uri={layout.part.uri}
+              width={partWidth}
+              height={partHeight}
+              hideBottomOverlapPx={
+                isLast ? hideBottomOverlapPx : layout.hideBottomOverlapPx
+              }
+              sourceHeight={layout.part.height}
+              inverted={inverted}
+            />
+          </View>
         );
       })}
     </View>

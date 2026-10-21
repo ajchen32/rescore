@@ -151,6 +151,52 @@ export function mergedStackHeight(parts: ReaderStrip[]): number {
   return mergedPartLayouts(parts).reduce((sum, layout) => sum + layout.stackSpan, 0);
 }
 
+export type MergedPartColumn = {
+  leftFraction: number;
+  widthFraction: number;
+};
+
+/**
+ * Each system is cropped to its own horizontal span, so stacking parts at full
+ * width stretches them by different amounts. Placing them by their page `x0`
+ * inside the union of their spans keeps barlines lined up. Parts saved before
+ * `x0` was recorded fall back to full width.
+ */
+export function mergedPartColumns(parts: ReaderStrip[]): MergedPartColumn[] {
+  const fullWidth = parts.map(() => ({ leftFraction: 0, widthFraction: 1 }));
+  if (parts.some((part) => part.x0 === undefined)) {
+    return fullWidth;
+  }
+
+  const minX = Math.min(...parts.map((part) => part.x0 as number));
+  const maxX = Math.max(...parts.map((part) => (part.x0 as number) + part.width));
+  const span = maxX - minX;
+  if (span <= 0) {
+    return fullWidth;
+  }
+
+  return parts.map((part) => ({
+    leftFraction: ((part.x0 as number) - minX) / span,
+    widthFraction: part.width / span,
+  }));
+}
+
+export function mergedStackWidth(parts: ReaderStrip[]): number {
+  if (parts.some((part) => part.x0 === undefined)) {
+    return Math.max(...parts.map((part) => part.width));
+  }
+  const minX = Math.min(...parts.map((part) => part.x0 as number));
+  const maxX = Math.max(...parts.map((part) => (part.x0 as number) + part.width));
+  return Math.max(1, maxX - minX);
+}
+
+function mergedStackX0(parts: ReaderStrip[]): number | undefined {
+  if (parts.some((part) => part.x0 === undefined)) {
+    return undefined;
+  }
+  return Math.min(...parts.map((part) => part.x0 as number));
+}
+
 export function stripSlotHeight(
   readerHeight: number,
   visibleCount: number,
@@ -199,9 +245,10 @@ export function mergeWithAbove(strips: ReaderStrip[], index: number): ReaderStri
   const merged: ReaderStrip = {
     id: newMergedId(parts),
     uri: parts[0].uri,
-    width: parts[0].width,
+    width: mergedStackWidth(parts),
     height: mergedStackHeight(parts),
     pageIndex: parts[0].pageIndex,
+    x0: mergedStackX0(parts),
     y0: y0Values.length > 0 ? Math.min(...y0Values) : parts[0].y0,
     parts,
   };
@@ -296,6 +343,7 @@ export function makeSplitPieces(
       width: piece.width,
       height: piece.height,
       pageIndex: source.pageIndex,
+      x0: source.x0,
       y0,
     };
   });
@@ -319,9 +367,10 @@ export function makeSplitPieceFromLeaves(
   return {
     id: `split-${splitIndex}-${pieceIndex}-merged-${leaves.map((part) => part.id).join("-")}`,
     uri: leaves[0].uri,
-    width: leaves[0].width,
+    width: mergedStackWidth(leaves),
     height: leaves.reduce((sum, part) => sum + part.height, 0),
     pageIndex: leaves[0].pageIndex,
+    x0: mergedStackX0(leaves),
     y0: y0Values.length > 0 ? Math.min(...y0Values) : leaves[0].y0,
     parts: leaves,
   };
