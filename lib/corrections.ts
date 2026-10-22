@@ -23,14 +23,21 @@ export function clampVisibleCount(count: number): number {
 export const STRIP_SEPARATOR_HEIGHT = 12;
 export const PAGE_BREAK_EXTRA_HEIGHT = 12;
 
+/**
+ * Top of a merged strip on its starting page. Parts are in reading order and
+ * may continue onto later pages, so only parts on the first part's page count;
+ * taking the smallest y0 across pages would place the strip too high.
+ */
+export function mergedStartY0(parts: ReaderStrip[]): number | undefined {
+  const pageIndex = parts[0]?.pageIndex;
+  return parts.find((part) => part.pageIndex === pageIndex && part.y0 !== undefined)?.y0;
+}
+
 export function stripPagePosition(strip: ReaderStrip): { pageIndex: number; y0: number } {
   if (strip.parts && strip.parts.length > 0) {
-    const y0Values = strip.parts
-      .map((part) => part.y0)
-      .filter((value): value is number => value !== undefined);
     return {
-      pageIndex: strip.pageIndex,
-      y0: y0Values.length > 0 ? Math.min(...y0Values) : Number.MAX_SAFE_INTEGER,
+      pageIndex: strip.parts[0].pageIndex,
+      y0: mergedStartY0(strip.parts) ?? Number.MAX_SAFE_INTEGER,
     };
   }
 
@@ -239,9 +246,6 @@ export function mergeWithAbove(strips: ReaderStrip[], index: number): ReaderStri
   const above = strips[index - 1];
   const current = strips[index];
   const parts = [...flattenParts(above), ...flattenParts(current)];
-  const y0Values = parts
-    .map((part) => part.y0)
-    .filter((value): value is number => value !== undefined);
   const merged: ReaderStrip = {
     id: newMergedId(parts),
     uri: parts[0].uri,
@@ -249,7 +253,7 @@ export function mergeWithAbove(strips: ReaderStrip[], index: number): ReaderStri
     height: mergedStackHeight(parts),
     pageIndex: parts[0].pageIndex,
     x0: mergedStackX0(parts),
-    y0: y0Values.length > 0 ? Math.min(...y0Values) : parts[0].y0,
+    y0: mergedStartY0(parts),
     parts,
   };
 
@@ -361,9 +365,6 @@ export function makeSplitPieceFromLeaves(
     return leaves[0];
   }
 
-  const y0Values = leaves
-    .map((part) => part.y0)
-    .filter((value): value is number => value !== undefined);
   return {
     id: `split-${splitIndex}-${pieceIndex}-merged-${leaves.map((part) => part.id).join("-")}`,
     uri: leaves[0].uri,
@@ -371,7 +372,7 @@ export function makeSplitPieceFromLeaves(
     height: leaves.reduce((sum, part) => sum + part.height, 0),
     pageIndex: leaves[0].pageIndex,
     x0: mergedStackX0(leaves),
-    y0: y0Values.length > 0 ? Math.min(...y0Values) : leaves[0].y0,
+    y0: mergedStartY0(leaves),
     parts: leaves,
   };
 }

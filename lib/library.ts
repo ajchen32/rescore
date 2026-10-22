@@ -5,6 +5,7 @@ import {
   clampVisibleCount,
   DEFAULT_LANDSCAPE_VISIBLE_COUNT,
   DEFAULT_VISIBLE_COUNT,
+  mergedStartY0,
   type ReaderStrip,
 } from "./corrections";
 import { getImagePixelSize } from "./splitStrip";
@@ -223,15 +224,12 @@ async function copyStripToSaved(
     for (const part of strip.parts) {
       parts.push(await copyLeafStrip(part, scoreDir, uriMap, nextIndex));
     }
-    const y0Values = parts
-      .map((part) => part.y0)
-      .filter((value): value is number => value !== undefined);
     return {
       uri: parts[0].uri,
       width: parts[0].width,
       height: parts.reduce((sum, part) => sum + part.height, 0),
       pageIndex: strip.pageIndex,
-      y0: y0Values.length > 0 ? Math.min(...y0Values) : strip.y0,
+      y0: mergedStartY0(strip.parts) ?? strip.y0,
       id: strip.id,
       parts,
     };

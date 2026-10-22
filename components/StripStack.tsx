@@ -73,14 +73,22 @@ export function StackedStripImages({
 }) {
   const layouts = mergedPartLayouts(parts);
   const columns = mergedPartColumns(parts);
-  const totalStackSpan = layouts.reduce((sum, layout) => sum + layout.stackSpan, 0);
+  // The last part also hides whatever it shares with the next strip, so its
+  // span shrinks by that much; otherwise it is squeezed into less room than
+  // the other parts and renders stretched.
+  const stackSpans = layouts.map((layout, index) =>
+    index === layouts.length - 1 && hideBottomOverlapPx < layout.part.height
+      ? Math.max(1, layout.stackSpan - hideBottomOverlapPx)
+      : layout.stackSpan
+  );
+  const totalStackSpan = stackSpans.reduce((sum, span) => sum + span, 0);
 
   return (
     <View style={{ width, height }}>
       {layouts.map((layout, index) => {
         const partHeight =
           totalStackSpan > 0
-            ? (layout.stackSpan / totalStackSpan) * height
+            ? (stackSpans[index] / totalStackSpan) * height
             : height / layouts.length;
         const isLast = index === layouts.length - 1;
         const partWidth = columns[index].widthFraction * width;
