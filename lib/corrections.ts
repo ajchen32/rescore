@@ -199,6 +199,78 @@ export function mergedPartColumns(parts: ReaderStrip[]): MergedPartColumn[] {
   }));
 }
 
+export type PageFrame = {
+  x0: number;
+  x1: number;
+};
+
+// A strip this much wider than its page's median strip (a title sliced together
+// with the first system, a mark poking into the margin) doesn't mark where the
+// page's systems start and end.
+const FRAME_OUTLIER_WIDTH_RATIO = 1.05;
+
+/**
+ * Where each page's systems start and end horizontally, in slicing-raster
+ * pixels: the leftmost start and rightmost end among its strips, ignoring
+ * unusually wide ones. Laying strips out inside this frame keeps an indented
+ * first system indented and every system on a page at one horizontal scale.
+ */
+export function pageFrames(strips: ReaderStrip[]): Map<number, PageFrame> {
+  const partsByPage = new Map<number, ReaderStrip[]>();
+  for (const strip of strips) {
+    for (const part of flattenParts(strip)) {
+      if (part.x0 === undefined) {
+        continue;
+      }
+      const pageParts = partsByPage.get(part.pageIndex) ?? [];
+      pageParts.push(part);
+      partsByPage.set(part.pageIndex, pageParts);
+    }
+  }
+
+  const frames = new Map<number, PageFrame>();
+  for (const [pageIndex, parts] of partsByPage) {
+    const widths = parts.map((part) => part.width).sort((a, b) => a - b);
+    const medianWidth = widths[Math.floor(widths.length / 2)];
+    const regular = parts.filter((part) => part.width <= medianWidth * FRAME_OUTLIER_WIDTH_RATIO);
+    frames.set(pageIndex, {
+      x0: Math.min(...regular.map((part) => part.x0 as number)),
+      x1: Math.max(...regular.map((part) => (part.x0 as number) + part.width)),
+    });
+  }
+  return frames;
+}
+
+export type HorizontalInsets = {
+  left: number;
+  right: number;
+};
+
+const NO_INSETS: HorizontalInsets = { left: 0, right: 0 };
+
+/**
+ * How far in from each side of its row a strip should be drawn, as fractions of
+ * the row width, so it sits where it does within its page's frame. Strips that
+ * reach past the frame on a side get no inset on that side.
+ */
+export function stripInsets(strip: ReaderStrip, frames: Map<number, PageFrame>): HorizontalInsets {
+  const parts = flattenParts(strip);
+  if (parts.some((part) => part.x0 === undefined)) {
+    return NO_INSETS;
+  }
+  const frame = frames.get(parts[0].pageIndex);
+  const span = frame ? frame.x1 - frame.x0 : 0;
+  if (!frame || span <= 0) {
+    return NO_INSETS;
+  }
+
+  const x0 = Math.min(...parts.map((part) => part.x0 as number));
+  const x1 = Math.max(...parts.map((part) => (part.x0 as number) + part.width));
+  const left = Math.max(0, x0 - frame.x0) / span;
+  const right = Math.max(0, frame.x1 - x1) / span;
+  return left + right < 1 ? { left, right } : NO_INSETS;
+}
+
 export function mergedStackWidth(parts: ReaderStrip[]): number {
   if (parts.some((part) => part.x0 === undefined)) {
     return Math.max(...parts.map((part) => part.width));

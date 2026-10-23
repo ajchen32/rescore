@@ -1,10 +1,12 @@
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import { View } from "react-native";
 
 import {
   continuesOnSamePage,
   DEFAULT_ASPECT_RATIO,
   overlapPxWithNext,
+  pageFrames,
+  stripInsets,
   type ReaderStrip,
   type StripColumn,
 } from "../lib/corrections";
@@ -42,6 +44,7 @@ export function StripColumnView({
 }: StripColumnViewProps) {
   const resolvedSlotHeight =
     slotHeight > 0 ? slotHeight : columnWidth / DEFAULT_ASPECT_RATIO;
+  const frames = useMemo(() => pageFrames(allStrips), [allStrips]);
 
   return (
     <View
@@ -68,6 +71,7 @@ export function StripColumnView({
               width={columnWidth}
               height={resolvedSlotHeight}
               hideBottomOverlapPx={hideBottomOverlapPx}
+              insets={stripInsets(strip, frames)}
               extraPageBreakSpacing={extraPageBreakSpacing}
               editing={editing}
               splitAvailable={splitAvailable}

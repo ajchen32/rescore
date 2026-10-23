@@ -8,6 +8,7 @@ import { colorWithAlpha, useTheme } from "../lib/theme";
 import {
   flattenParts,
   PAGE_BREAK_EXTRA_HEIGHT,
+  type HorizontalInsets,
   type ReaderStrip,
 } from "../lib/corrections";
 
@@ -16,6 +17,7 @@ type StripRowProps = {
   width: number;
   height: number;
   hideBottomOverlapPx?: number;
+  insets?: HorizontalInsets;
   extraPageBreakSpacing?: boolean;
   editing?: boolean;
   splitAvailable?: boolean;
@@ -32,6 +34,7 @@ export function StripRow({
   width,
   height,
   hideBottomOverlapPx = 0,
+  insets,
   extraPageBreakSpacing = false,
   editing = false,
   splitAvailable = true,
@@ -47,6 +50,8 @@ export function StripRow({
     ? Math.max(0, height - PAGE_BREAK_EXTRA_HEIGHT)
     : height;
   const parts = flattenParts(strip);
+  const imageLeft = (insets?.left ?? 0) * width;
+  const imageWidth = width - imageLeft - (insets?.right ?? 0) * width;
 
   return (
     <View
@@ -89,24 +94,26 @@ export function StripRow({
         </View>
       )}
 
-      {parts.length > 1 ? (
-        <StackedStripImages
-          parts={parts}
-          width={width}
-          height={contentHeight}
-          hideBottomOverlapPx={hideBottomOverlapPx}
-          inverted={inverted}
-        />
-      ) : (
-        <ClippedStripImage
-          uri={strip.uri}
-          width={width}
-          height={contentHeight}
-          hideBottomOverlapPx={hideBottomOverlapPx}
-          sourceHeight={strip.height}
-          inverted={inverted}
-        />
-      )}
+      <View style={{ marginLeft: imageLeft, width: imageWidth, height: contentHeight }}>
+        {parts.length > 1 ? (
+          <StackedStripImages
+            parts={parts}
+            width={imageWidth}
+            height={contentHeight}
+            hideBottomOverlapPx={hideBottomOverlapPx}
+            inverted={inverted}
+          />
+        ) : (
+          <ClippedStripImage
+            uri={strip.uri}
+            width={imageWidth}
+            height={contentHeight}
+            hideBottomOverlapPx={hideBottomOverlapPx}
+            sourceHeight={strip.height}
+            inverted={inverted}
+          />
+        )}
+      </View>
     </View>
   );
 }
