@@ -51,7 +51,7 @@ declare class PianoPdfParserNative extends NativeModule<{
   getPdfPagePreviews(pdfUri: string): Promise<PagePreview[]>;
   getPdfPagePreview(pdfUri: string, pageIndex: number): Promise<PagePreview>;
   processImages(imageUris: string[]): Promise<ProcessPdfResult>;
-  // Android only so far; see resampleForDisplay below.
+  // Missing from native builds that predate it; see resampleForDisplay below.
   resampleForDisplay?(uri: string, width: number, height: number): Promise<string>;
 }
 

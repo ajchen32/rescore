@@ -30,4 +30,11 @@ BOOL ppp_write_png_strip(
     int32_t *outWidth,
     int32_t *outHeight);
 
+/// Pixel size of an image file, read from its header without decoding it.
+BOOL ppp_image_file_size(NSString *path, int32_t *outWidth, int32_t *outHeight);
+
+/// Decode the image at `sourcePath`, resize it to exactly width x height grayscale
+/// pixels with an area filter (ppp_area_resample), and write it as a PNG.
+BOOL ppp_resample_image_file(NSString *sourcePath, NSString *destinationPath, int32_t width, int32_t height);
+
 NS_ASSUME_NONNULL_END

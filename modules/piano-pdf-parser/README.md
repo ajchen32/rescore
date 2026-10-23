@@ -31,11 +31,11 @@ JS (processPdf)
     → C ABI ppp_slice_page()
     → C++ Otsu + projection profile
     → { x0, y0, x1, y1 } ranges
-    → Android: re-render each strip from the PDF at 2x (≤ 500 DPI) as a master
-    → PNG encode (Android: 8-bit grayscale via C++; iOS: platform encoder)
+    → re-render each strip from the PDF at 2x (≤ 500 DPI) as a master
+    → 8-bit grayscale PNG encode (Android: C++; iOS: ImageIO)
     → file:// URIs + layout metadata
 
-JS (resampleForDisplay, Android)
+JS (resampleForDisplay)
   → decode a strip PNG
   → C++ ppp_area_resample() to the reader slot's exact pixel size
   → cached PNG drawn 1:1, so the GPU never resamples the music
@@ -45,7 +45,7 @@ JS (resampleForDisplay, Android)
 
 | Platform | How `cpp/slicer.cpp` is linked |
 |----------|--------------------------------|
-| iOS | `PianoPdfParser.podspec` compiles `../cpp/slicer.cpp` into the pod; `SlicerBridge.mm` calls `ppp_slice_page`. |
+| iOS | `PianoPdfParser.podspec` compiles `../cpp/*.cpp` into the pod; `SlicerBridge.mm` calls `ppp_slice_page`, `ppp_sharpen_strip` and `ppp_area_resample`. |
 | Android | `android/CMakeLists.txt` builds `libpiano_pdf_parser_core.so` from `jni_bridge.cpp`, `gray_png.cpp`, `../cpp/slicer.cpp` and `../cpp/raster.cpp`; Kotlin calls `SlicerNative` / `RasterNative` via JNI. |
 
 Swift/Kotlin own PDF rasterization. C++ owns slicing geometry, sharpening and resampling (`cpp/raster.cpp`); on Android it also encodes the grayscale PNGs.
@@ -134,12 +134,12 @@ Strips are written to:
 Each returned `Strip` includes:
 
 - `uri` — `file://` path to the PNG
-- `width`, `height`, `x0`, `y0` — the strip's size and position in **layout units**: pixels of the page raster it was sliced from. Merging, splitting and overlap all work in these units. The PNG itself may be larger (Android PDF imports store a 2x master), so never derive geometry from the image's pixel size.
+- `width`, `height`, `x0`, `y0` — the strip's size and position in **layout units**: pixels of the page raster it was sliced from. Merging, splitting and overlap all work in these units. The PNG itself may be larger (PDF imports store a 2x master), so never derive geometry from the image's pixel size.
 - `pageIndex` — 0-based PDF page
 
 ## Memory model
 
-Up to three pages in flight: the main thread rasterizes pages one at a time; worker threads slice, render masters (each worker has its own `PdfRenderer`) and write PNGs. Peak memory ≈ three page rasters plus their master strips, not the full score.
+Up to three pages in flight: the main thread rasterizes pages one at a time; worker threads slice, render masters (each worker uses its own `PdfRenderer` / `PDFDocument`) and write PNGs. Peak memory ≈ three page rasters plus their master strips, not the full score.
 
 `resampleForDisplay` caches its output under `{caches}/display/` (pruned to the newest 1500 files once it passes 2000) and resizes at most two strips at a time.
 

@@ -1,3 +1,4 @@
+import CryptoKit
 import ExpoModulesCore
 import PDFKit
 import UIKit
@@ -23,6 +24,7 @@ private struct StripRecord: Record {
   @Field var width: Double = 0
   @Field var height: Double = 0
   @Field var pageIndex: Double = 0
+  @Field var x0: Double?
   @Field var y0: Double?
 }
 
@@ -46,11 +48,93 @@ private let inkThreshold = 240
 private let previewMaxSidePx: CGFloat = 280
 private let previewZoomMaxSidePx: CGFloat = 1400
 
+// Strip images are stored at up to masterScale x the slicing resolution (capped
+// at maxMasterDpi) so the reader can shrink them to its exact slot size instead
+// of enlarging them. Strip metadata stays in slicing-raster pixels.
+private let masterScale: CGFloat = 2
+private let maxMasterDpi: CGFloat = 500
+private let displayCacheMaxFiles = 2000
+private let displayCachePrunedFiles = 1500
+private let displayCachePruneInterval = 50
+
+// A strip re-rendered from the PDF at master resolution (8-bit gray, tightly packed).
+private struct MasterStrip {
+  let pixels: [UInt8]
+  let width: Int
+  let height: Int
+}
+
+// PDFDocuments for import workers to render master strips with: PDFKit isn't
+// documented as safe for concurrent use of one document, so each concurrent
+// render borrows its own.
+private final class DocumentPool: @unchecked Sendable {
+  private let url: URL
+  private let lock = NSLock()
+  private var idle: [PDFDocument] = []
+
+  init(url: URL) {
+    self.url = url
+  }
+
+  func withDocument<T>(_ body: (PDFDocument) throws -> T) throws -> T {
+    lock.lock()
+    let reused = idle.popLast()
+    lock.unlock()
+
+    guard let document = reused ?? Self.open(url) else {
+      throw Exception(name: "INVALID_PDF", description: "Unable to open PDF document.", code: "INVALID_PDF")
+    }
+    defer {
+      lock.lock()
+      idle.append(document)
+      lock.unlock()
+    }
+    return try body(document)
+  }
+
+  private static func open(_ url: URL) -> PDFDocument? {
+    guard let document = PDFDocument(url: url) else {
+      return nil
+    }
+    if document.isEncrypted {
+      _ = document.unlock(withPassword: "")
+    }
+    return document
+  }
+}
+
+// Counts resized images written so the display cache is pruned every
+// displayCachePruneInterval writes rather than on each one.
+private final class DisplayCachePruner: @unchecked Sendable {
+  private let lock = NSLock()
+  private var writesSincePrune = 0
+
+  func recordWrite() -> Bool {
+    lock.lock()
+    defer {
+      lock.unlock()
+    }
+    writesSincePrune += 1
+    if writesSincePrune < displayCachePruneInterval {
+      return false
+    }
+    writesSincePrune = 0
+    return true
+  }
+}
+
 public class PianoPdfParserModule: Module {
+  private static let resampleSemaphore = DispatchSemaphore(value: 2)
+  private static let displayCachePruner = DisplayCachePruner()
+
   public func definition() -> ModuleDefinition {
     Name("PianoPdfParser")
 
     Events("onProgress")
+
+    AsyncFunction("resampleForDisplay") { (uri: String, width: Int, height: Int) -> String in
+      return try Self.resampleForDisplay(uri: uri, width: width, height: height)
+    }
 
     AsyncFunction("processPdf") { (pdfUri: String, options: ProcessPdfOptions?) -> ProcessPdfResult in
       return try self.processPdf(pdfUri: pdfUri, options: options)
@@ -108,6 +192,7 @@ public class PianoPdfParserModule: Module {
     let resultLock = NSLock()
     var pageResultsByStep: [PageSliceResult?] = Array(repeating: nil, count: selectedCount)
     var processingError: Error?
+    let documentPool = DocumentPool(url: URL(fileURLWithPath: filePath))
 
     for step in 0..<selectedCount {
       let pageIndex = selectedPages[step]
@@ -117,8 +202,9 @@ public class PianoPdfParserModule: Module {
 
       semaphore.wait()
       let raster: RasterizedPage
+      let dpi: CGFloat
       do {
-        let dpi = Self.resolveDpi(for: page, options: options)
+        dpi = Self.resolveDpi(for: page, options: options)
         raster = try Self.rasterizePage(page: page, dpi: dpi)
       } catch {
         semaphore.signal()
@@ -139,12 +225,29 @@ public class PianoPdfParserModule: Module {
         }
 
         do {
+          let ranges = try Self.sliceRanges(
+            pageIndex: pageIndex,
+            gray: grayCopy,
+            width: raster.width,
+            height: raster.height,
+            stride: raster.stride
+          )
+          let masters = try documentPool.withDocument { poolDocument -> [MasterStrip] in
+            guard let poolPage = poolDocument.page(at: pageIndex) else {
+              throw Self.exception(code: "INVALID_PDF", message: "Missing page \(pageIndex).")
+            }
+            return try ranges.map { range in
+              try Self.renderMasterStrip(page: poolPage, range: range, dpi: dpi, rasterHeight: raster.height)
+            }
+          }
           let pageResult = try Self.writePageStrips(
             pageIndex: pageIndex,
             gray: grayCopy,
             width: raster.width,
             height: raster.height,
             stride: raster.stride,
+            ranges: ranges,
+            masters: masters,
             outputDir: outputDir
           )
           resultLock.lock()
@@ -243,12 +346,21 @@ public class PianoPdfParserModule: Module {
         }
 
         do {
+          let ranges = try Self.sliceRanges(
+            pageIndex: pageIndex,
+            gray: grayCopy,
+            width: raster.width,
+            height: raster.height,
+            stride: raster.stride
+          )
           let pageResult = try Self.writePageStrips(
             pageIndex: pageIndex,
             gray: grayCopy,
             width: raster.width,
             height: raster.height,
             stride: raster.stride,
+            ranges: ranges,
+            masters: nil,
             outputDir: outputDir
           )
           resultLock.lock()
@@ -513,14 +625,13 @@ public class PianoPdfParserModule: Module {
     let garbage: [StripRecord]
   }
 
-  private static func writePageStrips(
+  private static func sliceRanges(
     pageIndex: Int,
     gray: UnsafePointer<UInt8>,
     width: Int,
     height: Int,
-    stride: Int,
-    outputDir: URL
-  ) throws -> PageSliceResult {
+    stride: Int
+  ) throws -> [StripRange] {
     guard let ranges = ppp_slice_page_objc(
       gray,
       Int32(width),
@@ -530,7 +641,7 @@ public class PianoPdfParserModule: Module {
       throw exception(code: "IO_ERROR", message: "Failed to slice page \(pageIndex).")
     }
 
-    let keptRanges = ranges
+    return ranges
       .map {
         StripRange(
           x0: Int($0.x0),
@@ -540,7 +651,75 @@ public class PianoPdfParserModule: Module {
         )
       }
       .filter { $0.x1 > $0.x0 && $0.y1 > $0.y0 }
+  }
 
+  // Renders one strip straight from the PDF at masterScale x the slicing raster
+  // (see rasterizePage). The transform is rasterizePage's, preceded by the map
+  // from raster pixels to this strip's master pixels.
+  private static func renderMasterStrip(
+    page: PDFPage,
+    range: StripRange,
+    dpi: CGFloat,
+    rasterHeight: Int
+  ) throws -> MasterStrip {
+    let scale = dpi / 72.0
+    let k = max(min(masterScale, maxMasterDpi / dpi), 1)
+    let masterWidth = max(Int((CGFloat(range.x1 - range.x0) * k).rounded()), 1)
+    let masterHeight = max(Int((CGFloat(range.y1 - range.y0) * k).rounded()), 1)
+
+    guard let colorSpace = CGColorSpaceCreateDeviceGray() else {
+      throw exception(code: "IO_ERROR", message: "Failed to create grayscale color space.")
+    }
+
+    var pixels = [UInt8](repeating: 255, count: masterWidth * masterHeight)
+    let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+      guard let context = CGContext(
+        data: buffer.baseAddress,
+        width: masterWidth,
+        height: masterHeight,
+        bitsPerComponent: 8,
+        bytesPerRow: masterWidth,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.none.rawValue
+      ) else {
+        return false
+      }
+
+      context.setFillColor(gray: 1.0, alpha: 1.0)
+      context.fill(CGRect(x: 0, y: 0, width: masterWidth, height: masterHeight))
+
+      context.saveGState()
+      // Raster pixel (x, rowFromTop) lands at master pixel k * (x - x0, rowFromTop - y0).
+      context.translateBy(
+        x: -k * CGFloat(range.x0),
+        y: CGFloat(masterHeight) - k * CGFloat(rasterHeight - range.y0)
+      )
+      context.scaleBy(x: k, y: k)
+      context.translateBy(x: 0, y: CGFloat(rasterHeight))
+      context.scaleBy(x: scale, y: -scale)
+      page.draw(with: .mediaBox, to: context)
+      context.restoreGState()
+      return true
+    }
+
+    if !drawn {
+      throw exception(code: "IO_ERROR", message: "Failed to create bitmap context.")
+    }
+    return MasterStrip(pixels: pixels, width: masterWidth, height: masterHeight)
+  }
+
+  // Strip metadata (width/height/x0/y0) is always in slicing-raster pixels; the
+  // PNG itself may be larger when a master was rendered.
+  private static func writePageStrips(
+    pageIndex: Int,
+    gray: UnsafePointer<UInt8>,
+    width: Int,
+    height: Int,
+    stride: Int,
+    ranges keptRanges: [StripRange],
+    masters: [MasterStrip]?,
+    outputDir: URL
+  ) throws -> PageSliceResult {
     var strips: [StripRecord] = []
     for (stripIndex, range) in keptRanges.enumerated() {
       let filename = "p\(pageIndex)_\(stripIndex).png"
@@ -548,19 +727,38 @@ public class PianoPdfParserModule: Module {
 
       var outWidth: Int32 = 0
       var outHeight: Int32 = 0
-      let wrote = ppp_write_png_strip(
-        gray,
-        Int32(width),
-        Int32(height),
-        Int32(stride),
-        Int32(range.x0),
-        Int32(range.y0),
-        Int32(range.x1),
-        Int32(range.y1),
-        outputPath,
-        &outWidth,
-        &outHeight
-      )
+      let wrote: Bool
+      if let master = masters?[stripIndex] {
+        wrote = master.pixels.withUnsafeBufferPointer { buffer in
+          ppp_write_png_strip(
+            buffer.baseAddress!,
+            Int32(master.width),
+            Int32(master.height),
+            Int32(master.width),
+            0,
+            0,
+            Int32(master.width),
+            Int32(master.height),
+            outputPath,
+            &outWidth,
+            &outHeight
+          )
+        }
+      } else {
+        wrote = ppp_write_png_strip(
+          gray,
+          Int32(width),
+          Int32(height),
+          Int32(stride),
+          Int32(range.x0),
+          Int32(range.y0),
+          Int32(range.x1),
+          Int32(range.y1),
+          outputPath,
+          &outWidth,
+          &outHeight
+        )
+      }
 
       if !wrote {
         throw exception(code: "IO_ERROR", message: "Failed to write strip PNG for page \(pageIndex).")
@@ -568,9 +766,10 @@ public class PianoPdfParserModule: Module {
 
       let strip = StripRecord()
       strip.uri = URL(fileURLWithPath: outputPath).absoluteString
-      strip.width = Double(outWidth)
-      strip.height = Double(outHeight)
+      strip.width = Double(range.x1 - range.x0)
+      strip.height = Double(range.y1 - range.y0)
       strip.pageIndex = Double(pageIndex)
+      strip.x0 = Double(range.x0)
       strip.y0 = Double(range.y0)
       strips.append(strip)
     }
@@ -618,6 +817,7 @@ public class PianoPdfParserModule: Module {
       piece.width = Double(outWidth)
       piece.height = Double(bandHeight)
       piece.pageIndex = Double(pageIndex)
+      piece.x0 = Double(range.x0)
       piece.y0 = Double(range.y0)
       garbage.append(piece)
       garbageIndex += 1
@@ -817,6 +1017,92 @@ public class PianoPdfParserModule: Module {
     context.restoreGState()
 
     return RasterizedPage(data: data, width: width, height: height, stride: stride)
+  }
+
+  // Shrinks a strip image to exactly width x height pixels with an area filter
+  // and caches the result, so the reader can show it 1:1 instead of letting the
+  // GPU resample it (which blurs when enlarging and aliases thin staff lines
+  // when shrinking). Returns the original uri when there is nothing to shrink.
+  private static func resampleForDisplay(uri: String, width: Int, height: Int) throws -> String {
+    if width <= 0 || height <= 0 {
+      return uri
+    }
+
+    let sourcePath = try resolvePdfPath(uri)
+    var sourceWidth: Int32 = 0
+    var sourceHeight: Int32 = 0
+    if !ppp_image_file_size(sourcePath, &sourceWidth, &sourceHeight) {
+      throw exception(code: "IO_ERROR", message: "Unable to read strip image size.")
+    }
+    if width >= Int(sourceWidth) && height >= Int(sourceHeight) {
+      return uri
+    }
+
+    guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+      throw exception(code: "IO_ERROR", message: "Unable to access cache directory.")
+    }
+    let cacheDir = caches.appendingPathComponent("display", isDirectory: true)
+    try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+    let target = cacheDir.appendingPathComponent("\(try displayCacheKey(path: sourcePath))_\(width)x\(height).png")
+    if FileManager.default.fileExists(atPath: target.path) {
+      return target.absoluteString
+    }
+
+    resampleSemaphore.wait()
+    defer {
+      resampleSemaphore.signal()
+    }
+    if FileManager.default.fileExists(atPath: target.path) {
+      return target.absoluteString
+    }
+
+    // Write under a temporary name so a concurrent request never reads a partial file.
+    let temporary = cacheDir.appendingPathComponent("\(target.lastPathComponent).\(UUID().uuidString).tmp")
+    if !ppp_resample_image_file(sourcePath, temporary.path, Int32(width), Int32(height)) {
+      try? FileManager.default.removeItem(at: temporary)
+      throw exception(code: "IO_ERROR", message: "Unable to write resized strip image.")
+    }
+    do {
+      try FileManager.default.moveItem(at: temporary, to: target)
+    } catch {
+      try? FileManager.default.removeItem(at: temporary)
+      if !FileManager.default.fileExists(atPath: target.path) {
+        throw exception(code: "IO_ERROR", message: "Unable to write resized strip image.")
+      }
+    }
+
+    if displayCachePruner.recordWrite() {
+      pruneDisplayCache(cacheDir)
+    }
+    return target.absoluteString
+  }
+
+  // Strip files are never rewritten in place, but key on size and mtime too so a
+  // replaced file can never be served a stale resize.
+  private static func displayCacheKey(path: String) throws -> String {
+    let attributes = try FileManager.default.attributesOfItem(atPath: path)
+    let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+    let modified = (attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+    let digest = Insecure.SHA1.hash(data: Data("\(path)|\(size)|\(modified)".utf8))
+    return digest.prefix(10).map { String(format: "%02x", $0) }.joined()
+  }
+
+  private static func pruneDisplayCache(_ cacheDir: URL) {
+    guard let files = try? FileManager.default.contentsOfDirectory(
+      at: cacheDir,
+      includingPropertiesForKeys: [.contentModificationDateKey]
+    ), files.count > displayCacheMaxFiles else {
+      return
+    }
+
+    let byAge = files.sorted { lhs, rhs in
+      let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+      let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+      return lhsDate < rhsDate
+    }
+    for file in byAge.prefix(files.count - displayCachePrunedFiles) {
+      try? FileManager.default.removeItem(at: file)
+    }
   }
 
   private static func exception(code: String, message: String) -> Exception {
