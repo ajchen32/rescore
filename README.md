@@ -50,16 +50,29 @@ Requirements: Node.js 18+, plus Android Studio for Android or Xcode for iOS. Onl
 npm install
 
 # development build with Metro
-npm run prebuild:dev
+npm run prebuild:dev        # first time only, or to regenerate android/
 npx expo run:android
 npm start
 
-# standalone release APK
+# release build, installed and launched on your phone
+npm run phone
+
+# release APK only, for both phone ABIs (dist/rescore-release.apk)
 npm run build:apk
-adb install -r dist/rescore-release.apk
 ```
 
-After a release build, run `npm run prebuild:dev` again before going back to Metro development. Adding a native dependency always needs a native rebuild (`npx expo run:android`); reloading Metro isn't enough.
+Release and development builds share the same `android/` folder (the dev client's tools are left out of release builds automatically), so you can switch between `npm run phone` and Metro freely. `npm run phone` builds only the target device's ABI, so incremental builds take seconds. Adding a native dependency still needs a native rebuild (`npx expo run:android`); reloading Metro isn't enough.
+
+Set `ANDROID_HOME` (usually `~/Android/Sdk`) and put its `platform-tools` first on your `PATH`, so `adb` is the SDK's rather than an older distro package.
+
+### Installing over Wi-Fi
+
+`npm run phone` installs on whichever device is connected, by USB or Wi-Fi. To skip the cable, pair your phone once (Android 11+):
+
+1. On the phone: **Developer options → Wireless debugging → on**, then **Pair device with pairing code**.
+2. On the computer: `adb pair <ip>:<pairing port>` and enter the code shown on the phone.
+
+After that, with Wireless debugging on and both devices on the same network, `npm run phone` finds and connects to the phone by itself. If several devices are connected, choose one with `ANDROID_SERIAL=<serial> npm run phone` (`adb devices` lists serials).
 
 ### Slicer tests and benchmark
 

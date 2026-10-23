@@ -1,119 +1,149 @@
 #!/usr/bin/env node
 /**
- * Builds a production Android APK without expo-dev-client (no Metro splash).
- * Restores package.json afterwards. Run `npm run prebuild:dev` before
- * day-to-day Metro / expo-dev-client development again.
+ * Builds a release APK from the existing android/ project and optionally
+ * installs it on a phone.
+ *
+ *   npm run build:apk   build dist/rescore-release.apk (phone ABIs)
+ *   npm run phone       build for the connected device and install + launch it
+ *
+ * expo-dev-launcher and expo-dev-menu swap in empty stubs for release builds, so
+ * the same android/ folder serves both Metro development and release APKs; there
+ * is no prebuild round trip and the dev build cache stays warm.
+ *
+ * Device selection for --install: ANDROID_SERIAL if set, otherwise the single
+ * connected device (physical preferred over emulators). If nothing is connected,
+ * phones paired for Wireless debugging on the same network are found over mDNS
+ * and connected automatically.
  */
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const packagePath = join(root, "package.json");
-const originalPackage = readFileSync(packagePath, "utf8");
+const androidDir = join(root, "android");
+const appId = "com.pianopdfparser.app";
+const phoneAbis = "armeabi-v7a,arm64-v8a";
+const install = process.argv.includes("--install");
 
-const DEV_CLIENT_PACKAGES = [
-  "expo-dev-client",
-  "expo-dev-launcher",
-  "expo-dev-menu",
-  "expo-dev-menu-interface",
-];
+const sdkDir =
+  process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || join(homedir(), "Android", "Sdk");
+const sdkAdb = join(sdkDir, "platform-tools", "adb");
+const adbPath = existsSync(sdkAdb) ? sdkAdb : "adb";
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     stdio: "inherit",
-    env: options.env ?? process.env,
+    env: { ...process.env, ANDROID_HOME: sdkDir, ...options.env },
   });
   if (result.status !== 0) {
     throw new Error(`${command} ${args.join(" ")} failed with code ${result.status}`);
   }
 }
 
-function patchAutolinkingExclude() {
-  const pkg = JSON.parse(originalPackage);
-  pkg.expo = {
-    ...(pkg.expo ?? {}),
-    autolinking: {
-      ...(pkg.expo?.autolinking ?? {}),
-      exclude: [
-        ...new Set([...(pkg.expo?.autolinking?.exclude ?? []), ...DEV_CLIENT_PACKAGES]),
-      ],
-    },
-  };
-  writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
+function adb(args) {
+  const result = spawnSync(adbPath, args, { encoding: "utf8" });
+  return result.status === 0 ? result.stdout.trim() : "";
 }
 
-function restorePackageJson() {
-  writeFileSync(packagePath, originalPackage);
+function connectedDevices() {
+  return adb(["devices"])
+    .split("\n")
+    .slice(1)
+    .map((line) => line.trim().split(/\s+/))
+    .filter(([serial, state]) => serial && state === "device")
+    .map(([serial]) => serial);
 }
 
-function ensureLocalProperties() {
-  const sdkDir =
-    process.env.ANDROID_HOME ||
-    process.env.ANDROID_SDK_ROOT ||
-    join(homedir(), "Android", "Sdk");
-  writeFileSync(join(root, "android", "local.properties"), `sdk.dir=${sdkDir}\n`);
+// Android 11+ Wireless debugging advertises paired phones over mDNS; connect to
+// any that are visible so `npm run phone` works without a cable.
+function connectWirelessDevices() {
+  // A server started by an older adb (e.g. a distro package) has no mDNS
+  // support; restart it with this adb so discovery works.
+  if (!adb(["mdns", "check"]).includes("mdns daemon")) {
+    adb(["kill-server"]);
+    adb(["start-server"]);
+  }
+  const services = adb(["mdns", "services"]);
+  for (const line of services.split("\n")) {
+    const match = line.match(/_adb-tls-connect\._tcp\.?\s+(\S+:\d+)/);
+    if (match) {
+      console.log(`Connecting to ${match[1]} over Wi-Fi…`);
+      adb(["connect", match[1]]);
+    }
+  }
 }
 
-function tuneGradleMemory() {
-  const gradlePropertiesPath = join(root, "android", "gradle.properties");
-  let text = readFileSync(gradlePropertiesPath, "utf8");
-  text = text.replace(
-    /org\.gradle\.jvmargs=.*/g,
-    "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
-  );
-  // Phone APKs don't need x86 emulator ABIs; fewer ABIs = less memory during release.
-  text = text.replace(
-    /reactNativeArchitectures=.*/g,
-    "reactNativeArchitectures=armeabi-v7a,arm64-v8a"
-  );
-  writeFileSync(gradlePropertiesPath, text);
+function pickDevice() {
+  if (process.env.ANDROID_SERIAL) {
+    return process.env.ANDROID_SERIAL;
+  }
+
+  let devices = connectedDevices();
+  if (devices.length === 0) {
+    connectWirelessDevices();
+    devices = connectedDevices();
+  }
+  if (devices.length === 0) {
+    throw new Error(
+      "No device found. Plug in a phone with USB debugging, or pair it once for Wireless debugging (see README)."
+    );
+  }
+
+  const physical = devices.filter((serial) => !serial.startsWith("emulator-"));
+  const candidates = physical.length > 0 ? physical : devices;
+  if (candidates.length > 1) {
+    throw new Error(
+      `Several devices are connected (${candidates.join(", ")}). Pick one with ANDROID_SERIAL=<serial> npm run phone.`
+    );
+  }
+  return candidates[0];
+}
+
+function ensureAndroidProject() {
+  if (!existsSync(join(androidDir, "gradlew"))) {
+    console.log("No android/ project yet; generating it…");
+    run("npx", ["expo", "prebuild", "--platform", "android"]);
+  }
+  writeFileSync(join(androidDir, "local.properties"), `sdk.dir=${sdkDir}\n`);
 }
 
 try {
-  console.log("Building Rescore release APK (no expo-dev-client)…");
-  patchAutolinkingExclude();
+  const device = install ? pickDevice() : null;
+  // Building only the device's own ABI is several times faster than every phone ABI.
+  const abis = device ? adb(["-s", device, "shell", "getprop", "ro.product.cpu.abi"]) || phoneAbis : phoneAbis;
+  const emulatorRunning = connectedDevices().some((serial) => serial.startsWith("emulator-"));
 
-  run("npx", ["expo", "prebuild", "--platform", "android", "--clean"], {
-    env: { ...process.env, RESCORE_VARIANT: "release" },
-  });
-
-  ensureLocalProperties();
-  tuneGradleMemory();
-
-  run("./gradlew", ["assembleRelease", "--no-daemon"], {
-    cwd: join(root, "android"),
-    env: {
-      ...process.env,
-      RESCORE_VARIANT: "release",
-      GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m",
-    },
-  });
-
-  const apkSrc = join(
-    root,
-    "android",
-    "app",
-    "build",
-    "outputs",
-    "apk",
-    "release",
-    "app-release.apk"
+  ensureAndroidProject();
+  console.log(`Building Rescore release APK for ${abis}${device ? ` (${device})` : ""}…`);
+  run(
+    "./gradlew",
+    [
+      "assembleRelease",
+      `-PreactNativeArchitectures=${abis}`,
+      // A release build next to a running emulator can exhaust RAM; fewer
+      // parallel workers keeps the Gradle daemon from being OOM-killed.
+      ...(emulatorRunning ? ["--max-workers=2"] : []),
+    ],
+    { cwd: androidDir, env: { NODE_ENV: "production" } }
   );
+
+  const apkSrc = join(androidDir, "app", "build", "outputs", "apk", "release", "app-release.apk");
   const distDir = join(root, "dist");
   mkdirSync(distDir, { recursive: true });
   const apkDest = join(distDir, "rescore-release.apk");
   copyFileSync(apkSrc, apkDest);
-
   console.log(`\nRelease APK ready:\n  ${apkDest}\n`);
-  console.log("Install with:\n  adb install -r dist/rescore-release.apk\n");
-  console.log("Before developing with Metro again, run:\n  npm run prebuild:dev\n");
+
+  if (device) {
+    console.log(`Installing on ${device}…`);
+    run(adbPath, ["-s", device, "install", "-r", apkDest]);
+    adb(["-s", device, "shell", "monkey", "-p", appId, "-c", "android.intent.category.LAUNCHER", "1"]);
+    console.log("Installed and launched.");
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
-} finally {
-  restorePackageJson();
 }

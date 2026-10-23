@@ -43,6 +43,7 @@
     "prebuild": "expo prebuild",
     "prebuild:dev": "RESCORE_VARIANT=development npx expo prebuild --platform android --clean",
     "build:apk": "node scripts/build-release-apk.mjs",
+    "phone": "node scripts/build-release-apk.mjs --install",
     "typecheck": "tsc --noEmit"
   },
   "private": true
