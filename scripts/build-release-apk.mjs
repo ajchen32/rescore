@@ -93,7 +93,17 @@ function pickDevice() {
   }
 
   const physical = devices.filter((serial) => !serial.startsWith("emulator-"));
-  const candidates = physical.length > 0 ? physical : devices;
+  // A Wi-Fi phone can be listed twice (adb's mDNS auto-connect and an explicit
+  // `adb connect`); count each hardware serial once.
+  const seen = new Set();
+  const candidates = (physical.length > 0 ? physical : devices).filter((serial) => {
+    const hardwareSerial = adb(["-s", serial, "shell", "getprop", "ro.serialno"]) || serial;
+    if (seen.has(hardwareSerial)) {
+      return false;
+    }
+    seen.add(hardwareSerial);
+    return true;
+  });
   if (candidates.length > 1) {
     throw new Error(
       `Several devices are connected (${candidates.join(", ")}). Pick one with ANDROID_SERIAL=<serial> npm run phone.`
