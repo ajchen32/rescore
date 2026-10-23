@@ -1,6 +1,7 @@
 import { View } from "react-native";
 
 import { MusicImage } from "./MusicImage";
+import { useDisplayUri } from "../lib/displayImage";
 import {
   mergedPartColumns,
   mergedPartLayouts,
@@ -26,11 +27,16 @@ export function ClippedStripImage({
     hideBottomOverlapPx > 0 && sourceHeight > hideBottomOverlapPx
       ? hideBottomOverlapPx / sourceHeight
       : 0;
+  const clipped = clipFraction > 0 && clipFraction < 1;
+  const imageHeight = clipped ? height / (1 - clipFraction) : height;
+  // recyclingKey stays on the strip's own uri: changing it would blank the view
+  // while the resized copy loads.
+  const displayUri = useDisplayUri(uri, width, imageHeight);
 
-  if (clipFraction <= 0 || clipFraction >= 1) {
+  if (!clipped) {
     return (
       <MusicImage
-        source={{ uri }}
+        source={{ uri: displayUri }}
         style={{ width: "100%", height }}
         contentFit="fill"
         recyclingKey={uri}
@@ -39,11 +45,10 @@ export function ClippedStripImage({
     );
   }
 
-  const imageHeight = height / (1 - clipFraction);
   return (
     <View style={{ width, height, overflow: "hidden" }}>
       <MusicImage
-        source={{ uri }}
+        source={{ uri: displayUri }}
         style={{ width: "100%", height: imageHeight }}
         contentFit="fill"
         recyclingKey={uri}

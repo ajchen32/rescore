@@ -238,7 +238,12 @@ async function copyStripToSaved(
   return copyLeafStrip(strip, scoreDir, uriMap, nextIndex);
 }
 
+// A strip's width and height are layout units (slicing-raster pixels), and its
+// image may be stored at a higher resolution, so only fill them in when missing.
 async function refreshLeafDimensions(strip: SavedStrip): Promise<SavedStrip> {
+  if (strip.width > 0 && strip.height > 0) {
+    return strip;
+  }
   try {
     const { width, height } = await getImagePixelSize(strip.uri);
     return {

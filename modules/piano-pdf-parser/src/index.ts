@@ -51,6 +51,8 @@ declare class PianoPdfParserNative extends NativeModule<{
   getPdfPagePreviews(pdfUri: string): Promise<PagePreview[]>;
   getPdfPagePreview(pdfUri: string, pageIndex: number): Promise<PagePreview>;
   processImages(imageUris: string[]): Promise<ProcessPdfResult>;
+  // Android only so far; see resampleForDisplay below.
+  resampleForDisplay?(uri: string, width: number, height: number): Promise<string>;
 }
 
 const native = requireNativeModule<PianoPdfParserNative>("PianoPdfParser");
@@ -91,4 +93,20 @@ export async function processImages(imageUris: string[]): Promise<ProcessPdfResu
     jobId: result.jobId,
     directoryUri: result.directoryUri,
   };
+}
+
+/**
+ * Returns a version of a strip image resized to exactly `width` x `height`
+ * pixels with an area filter, so it can be drawn 1:1. Resolves to `uri` itself
+ * when no resize is needed or the platform doesn't implement it.
+ */
+export async function resampleForDisplay(
+  uri: string,
+  width: number,
+  height: number
+): Promise<string> {
+  if (typeof native.resampleForDisplay !== "function") {
+    return uri;
+  }
+  return native.resampleForDisplay(uri, width, height);
 }

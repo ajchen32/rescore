@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(piano_pdf_parser_slicer STATIC
   slicer.cpp
   slicer_legacy.cpp
+  raster.cpp
 )
 
 target_include_directories(piano_pdf_parser_slicer PUBLIC
@@ -18,6 +19,12 @@ add_executable(slicer_test
 )
 
 target_link_libraries(slicer_test PRIVATE piano_pdf_parser_slicer)
+
+add_executable(raster_test
+  raster_test.cpp
+)
+
+target_link_libraries(raster_test PRIVATE piano_pdf_parser_slicer)
 
 add_executable(slicer_debug
   tools/slicer_debug.cpp

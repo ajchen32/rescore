@@ -8,6 +8,8 @@ add_library(
   piano_pdf_parser_core
   SHARED
   src/main/cpp/jni_bridge.cpp
+  src/main/cpp/gray_png.cpp
+  ../cpp/raster.cpp
   ../cpp/slicer.cpp
 )
 
@@ -19,8 +21,12 @@ target_include_directories(
 )
 
 find_library(log-lib log)
+find_library(z-lib z)
+find_library(jnigraphics-lib jnigraphics)
 
 target_link_libraries(
   piano_pdf_parser_core
   ${log-lib}
+  ${z-lib}
+  ${jnigraphics-lib}
 )

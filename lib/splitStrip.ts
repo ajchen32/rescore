@@ -185,6 +185,9 @@ async function splitSingleStripAtRatios(
   ImageManipulator: ImageManipulatorModule
 ): Promise<ReaderStrip[]> {
   const { width: actualWidth, height: actualHeight } = await getImagePixelSize(strip.uri);
+  // Cuts are made in image pixels, but strip geometry (height, y0) is in layout
+  // units, which differ when the image is stored above layout resolution.
+  const unitsPerPixel = strip.height / actualHeight;
   const cutYs = uniqueCutYs(actualHeight, ratios);
   const overlapPx = overlapExtentPx(actualHeight, overlapRatio);
   const pieceBounds = computePieceBounds(actualHeight, cutYs, overlapPx);
@@ -199,8 +202,10 @@ async function splitSingleStripAtRatios(
       actualWidth
     );
     pieces.push({
-      ...cropped,
-      originY: bounds.originY,
+      uri: cropped.uri,
+      width: strip.width,
+      height: cropped.height * unitsPerPixel,
+      originY: bounds.originY * unitsPerPixel,
     });
   }
 
@@ -208,7 +213,7 @@ async function splitSingleStripAtRatios(
     throw new Error("Could not create any strip pieces from the cut lines.");
   }
 
-  return makeSplitPieces({ ...strip, width: pieces[0].width }, pieces, splitIndex);
+  return makeSplitPieces(strip, pieces, splitIndex);
 }
 
 async function splitMergedStripAtRatios(
@@ -241,21 +246,31 @@ async function splitMergedStripAtRatios(
         continue;
       }
 
+      // Stack positions are layout units; crop in the part image's own pixels.
       const localOriginY = intersectStart - stackY0;
-      const { width: actualWidth } = await getImagePixelSize(part.uri);
+      const { width: actualWidth, height: actualHeight } = await getImagePixelSize(part.uri);
+      const pixelsPerUnit = actualHeight / part.height;
+      const cropOriginPx = Math.round(localOriginY * pixelsPerUnit);
+      const cropEndPx = Math.min(
+        actualHeight,
+        Math.round((localOriginY + cropHeight) * pixelsPerUnit)
+      );
+      if (cropEndPx - cropOriginPx < 1) {
+        continue;
+      }
       const cropped = await cropImageRegion(
         ImageManipulator,
         part.uri,
-        localOriginY,
-        cropHeight,
+        cropOriginPx,
+        cropEndPx - cropOriginPx,
         actualWidth
       );
 
       leaves.push({
         id: `split-${splitIndex}-${pieceIndex}-${segmentIndex}-${cropped.uri}`,
         uri: cropped.uri,
-        width: cropped.width,
-        height: cropped.height,
+        width: part.width,
+        height: cropHeight,
         pageIndex: part.pageIndex,
         x0: part.x0,
         y0: part.y0 !== undefined ? part.y0 + localOriginY : undefined,

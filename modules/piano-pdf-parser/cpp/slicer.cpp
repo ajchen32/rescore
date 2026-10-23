@@ -3023,19 +3023,40 @@ void ppp_sharpen_strip(uint8_t* gray, int32_t width, int32_t height, int32_t str
   const size_t pixel_count = static_cast<size_t>(width) * static_cast<size_t>(height);
   std::vector<uint8_t> blurred(pixel_count);
 
-  for (int32_t y = 0; y < height; ++y) {
-    for (int32_t x = 0; x < width; ++x) {
-      int32_t sum = 0;
-      for (int32_t dy = -1; dy <= 1; ++dy) {
-        for (int32_t dx = -1; dx <= 1; ++dx) {
-          const int32_t sample_y = std::max(0, std::min(height - 1, y + dy));
-          const int32_t sample_x = std::max(0, std::min(width - 1, x + dx));
-          sum += gray[static_cast<size_t>(sample_y) * static_cast<size_t>(stride) + sample_x];
-        }
-      }
-      blurred[static_cast<size_t>(y) * static_cast<size_t>(width) + x] =
-          static_cast<uint8_t>(sum / 9);
+  // 3x3 box sum with edge clamping, computed separably: each row's horizontal
+  // 3-sums, then the vertical 3-sum of those. Identical to summing the clamped
+  // 3x3 neighbourhood directly, but ~3x fewer reads and no per-tap clamping.
+  const auto horizontal_sums = [&](int32_t y, int32_t* out) {
+    const uint8_t* row = gray + static_cast<size_t>(y) * static_cast<size_t>(stride);
+    if (width == 1) {
+      out[0] = 3 * row[0];
+      return;
     }
+    out[0] = 2 * row[0] + row[1];
+    for (int32_t x = 1; x < width - 1; ++x) {
+      out[x] = row[x - 1] + row[x] + row[x + 1];
+    }
+    out[width - 1] = row[width - 2] + 2 * row[width - 1];
+  };
+
+  std::vector<int32_t> sums(static_cast<size_t>(width) * 3);
+  int32_t* above = sums.data();
+  int32_t* current = above + width;
+  int32_t* below = current + width;
+  horizontal_sums(0, current);
+  std::copy(current, current + width, above);
+  for (int32_t y = 0; y < height; ++y) {
+    if (y + 1 < height) {
+      horizontal_sums(y + 1, below);
+    } else {
+      std::copy(current, current + width, below);
+    }
+    uint8_t* out = blurred.data() + static_cast<size_t>(y) * static_cast<size_t>(width);
+    for (int32_t x = 0; x < width; ++x) {
+      out[x] = static_cast<uint8_t>((above[x] + current[x] + below[x]) / 9);
+    }
+    std::swap(above, current);
+    std::swap(current, below);
   }
 
   for (int32_t y = 0; y < height; ++y) {
