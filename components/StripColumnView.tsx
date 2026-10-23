@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { View } from "react-native";
 
 import {
+  continuesOnSamePage,
   DEFAULT_ASPECT_RATIO,
   overlapPxWithNext,
   type ReaderStrip,
@@ -55,7 +56,7 @@ export function StripColumnView({
         const nextStrip = allStrips[globalIndex + 1];
         const nextInColumn = column.strips[index + 1];
         const extraPageBreakSpacing =
-          nextStrip !== undefined && nextStrip.pageIndex !== strip.pageIndex;
+          nextStrip !== undefined && !continuesOnSamePage(strip, nextStrip);
         const hideBottomOverlapPx =
           nextInColumn !== undefined ? overlapPxWithNext(strip, nextInColumn) : 0;
 

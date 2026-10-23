@@ -123,8 +123,19 @@ function stripBottomY(strip: ReaderStrip): number | undefined {
   return lastPart.y0 + lastPart.height;
 }
 
+/**
+ * Whether `next` continues on the page `strip` ends on. A merged strip can
+ * span a page break, so compare its last part with the next strip's first part
+ * rather than the strips' own `pageIndex`, which is where they start.
+ */
+export function continuesOnSamePage(strip: ReaderStrip, next: ReaderStrip): boolean {
+  const lastPart = flattenParts(strip).at(-1);
+  const firstNextPart = flattenParts(next)[0];
+  return lastPart?.pageIndex === firstNextPart?.pageIndex;
+}
+
 export function overlapPxWithNext(strip: ReaderStrip, next: ReaderStrip): number {
-  if (strip.pageIndex !== next.pageIndex) {
+  if (!continuesOnSamePage(strip, next)) {
     return 0;
   }
 
