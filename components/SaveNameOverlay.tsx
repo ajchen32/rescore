@@ -24,6 +24,7 @@ type SaveNameOverlayProps = {
   heading?: string;
   cancelAccessibilityLabel?: string;
   confirmAccessibilityLabel?: string;
+  placeholder?: string;
   avoidKeyboard?: AvoidKeyboardMode;
   onCancel: () => void;
   onConfirm: (title: string) => void;
@@ -41,6 +42,7 @@ export function SaveNameOverlay({
   heading = "Name",
   cancelAccessibilityLabel = "Cancel save",
   confirmAccessibilityLabel,
+  placeholder = "Piece name",
   avoidKeyboard = "padding",
   onCancel,
   onConfirm,
@@ -138,7 +140,7 @@ export function SaveNameOverlay({
           backgroundColor: colors.background,
           color: colors.text,
         }}
-        placeholder="Piece name"
+        placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
       />
 

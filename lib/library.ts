@@ -8,6 +8,7 @@ import {
   mergedStartY0,
   type ReaderStrip,
 } from "./corrections";
+import { canMoveFolder, removeFolder, type Folder } from "./folders";
 import { getImagePixelSize } from "./splitStrip";
 
 export type SavedStrip = {
@@ -31,10 +32,13 @@ export type SavedScore = {
   landscapeVisibleCount?: number;
   strips: SavedStrip[];
   garbage?: SavedStrip[];
+  // The folder it's filed in; missing or null means the library root.
+  folderId?: string | null;
 };
 
 export type Library = {
   scores: SavedScore[];
+  folders?: Folder[];
 };
 
 export type SaveScoreInput = {
@@ -45,6 +49,8 @@ export type SaveScoreInput = {
   visibleCount?: number;
   portraitVisibleCount?: number;
   landscapeVisibleCount?: number;
+  // Where a new score is filed; an existing score keeps its folder.
+  folderId?: string | null;
 };
 
 export function resolvePortraitVisibleCount(score: SavedScore): number {
@@ -416,11 +422,13 @@ export async function saveScore(input: SaveScoreInput): Promise<SaveScoreResult>
         input.landscapeVisibleCount ?? DEFAULT_LANDSCAPE_VISIBLE_COUNT,
       strips: finalStrips,
       garbage: finalGarbage.length > 0 ? finalGarbage : undefined,
+      folderId: previous ? previous.folderId : (input.folderId ?? null),
     };
 
     const library = await loadLibrary();
     const withoutCurrent = library.scores.filter((entry) => entry.id !== id);
     const nextLibrary: Library = {
+      ...library,
       scores: [score, ...withoutCurrent],
     };
     await writeLibrary(nextLibrary);
@@ -437,6 +445,7 @@ export async function deleteScore(id: string): Promise<void> {
 
   const library = await loadLibrary();
   const nextLibrary: Library = {
+    ...library,
     scores: library.scores.filter((entry) => entry.id !== id),
   };
   await writeLibrary(nextLibrary);
@@ -460,7 +469,69 @@ export async function renameScore(id: string, title: string): Promise<SavedScore
   };
   const scores = [...library.scores];
   scores[index] = updated;
-  await writeLibrary({ scores });
+  await writeLibrary({ ...library, scores });
 
   return updated;
+}
+
+function newFolderId(): string {
+  return `folder-${newScoreId()}`;
+}
+
+function cleanFolderName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Folder name cannot be empty.");
+  }
+  return trimmed;
+}
+
+export async function createFolder(name: string, parentId: string | null): Promise<Folder> {
+  const library = await loadLibrary();
+  const folder: Folder = {
+    id: newFolderId(),
+    name: cleanFolderName(name),
+    parentId,
+    createdAt: Date.now(),
+  };
+  await writeLibrary({ ...library, folders: [...(library.folders ?? []), folder] });
+  return folder;
+}
+
+export async function renameFolder(id: string, name: string): Promise<void> {
+  const library = await loadLibrary();
+  const trimmed = cleanFolderName(name);
+  await writeLibrary({
+    ...library,
+    folders: (library.folders ?? []).map((folder) =>
+      folder.id === id ? { ...folder, name: trimmed } : folder
+    ),
+  });
+}
+
+/** Deletes a folder; what it contained moves up to its parent. Scores are kept. */
+export async function deleteFolder(id: string): Promise<void> {
+  const library = await loadLibrary();
+  const next = removeFolder({ folders: library.folders ?? [], items: library.scores }, id);
+  await writeLibrary({ ...library, folders: next.folders, scores: next.items });
+}
+
+export async function moveScore(id: string, folderId: string | null): Promise<void> {
+  const library = await loadLibrary();
+  await writeLibrary({
+    ...library,
+    scores: library.scores.map((score) => (score.id === id ? { ...score, folderId } : score)),
+  });
+}
+
+export async function moveFolder(id: string, parentId: string | null): Promise<void> {
+  const library = await loadLibrary();
+  const folders = library.folders ?? [];
+  if (!canMoveFolder(folders, id, parentId)) {
+    throw new Error("A folder can't be moved into itself.");
+  }
+  await writeLibrary({
+    ...library,
+    folders: folders.map((folder) => (folder.id === id ? { ...folder, parentId } : folder)),
+  });
 }

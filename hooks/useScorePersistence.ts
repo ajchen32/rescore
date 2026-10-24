@@ -39,6 +39,8 @@ type ScorePersistenceOptions = {
   portraitVisibleCount: number;
   landscapeVisibleCount: number;
   selectedName: string | null;
+  // The library folder a newly imported score is filed in.
+  newScoreFolderId: string | null;
   setStrips: Dispatch<SetStateAction<ReaderStrip[]>>;
   setGarbage: Dispatch<SetStateAction<ReaderStrip[]>>;
   setSelectedName: Dispatch<SetStateAction<string | null>>;
@@ -61,6 +63,7 @@ export function useScorePersistence({
   portraitVisibleCount,
   landscapeVisibleCount,
   selectedName,
+  newScoreFolderId,
   setStrips,
   setGarbage,
   setSelectedName,
@@ -96,6 +99,8 @@ export function useScorePersistence({
   landscapeVisibleCountRef.current = landscapeVisibleCount;
   selectedNameRef.current = selectedName;
   savedScoreIdRef.current = savedScoreId;
+  const newScoreFolderIdRef = useRef(newScoreFolderId);
+  newScoreFolderIdRef.current = newScoreFolderId;
   const onScoreLoadedRef = useRef(onScoreLoaded);
   onScoreLoadedRef.current = onScoreLoaded;
 
@@ -225,6 +230,7 @@ export function useScorePersistence({
           garbage: currentGarbage,
           portraitVisibleCount: currentPortraitVisibleCount,
           landscapeVisibleCount: currentLandscapeVisibleCount,
+          folderId: newScoreFolderIdRef.current,
         });
 
         // The reader was closed while this save ran; don't repopulate it.
