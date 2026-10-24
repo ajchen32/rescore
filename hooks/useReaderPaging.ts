@@ -202,14 +202,14 @@ export function useReaderPaging({
     viewportWidth,
   ]);
 
+  // Keep the column in range. This runs right after the rotation effect above,
+  // in the same commit, so it must clamp the index that effect just set rather
+  // than this render's (pre-rotation) value; otherwise turning back to portrait
+  // clamps the old landscape index to the last page.
   useEffect(() => {
-    if (columns.length === 0) {
-      setColumnIndex(0);
-      return;
-    }
-    if (columnIndex >= columns.length) {
-      setColumnIndex(columns.length - 1);
-    }
+    setColumnIndex((current) =>
+      columns.length === 0 ? 0 : Math.min(current, columns.length - 1)
+    );
   }, [columnIndex, columns.length]);
 
   const handleReaderLayout = useCallback((event: LayoutChangeEvent) => {
