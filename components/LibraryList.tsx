@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Alert, FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, Pressable, Text, View } from "react-native";
 
 import { SaveNameOverlay } from "./SaveNameOverlay";
 import { errorFromUnknown } from "../lib/errors";
@@ -13,24 +13,23 @@ import {
 import { useTheme } from "../lib/theme";
 
 const LONG_PRESS_DELAY_MS = 250;
-// Below this many scores the list fits on screen and a search field is clutter.
-const SEARCH_MIN_SCORES = 8;
 
 type LibraryListProps = {
   // Change to reload the list (e.g. after closing a score that was just saved).
   refreshKey: number;
+  // Search text from the home toolbar; filters by title.
+  query: string;
   onOpen: (scoreId: string) => void;
   onError: (message: string) => void;
   // Shown under the empty state.
   emptyAction?: ReactNode;
 };
 
-export function LibraryList({ refreshKey, onOpen, onError, emptyAction }: LibraryListProps) {
+export function LibraryList({ refreshKey, query, onOpen, onError, emptyAction }: LibraryListProps) {
   const { colors } = useTheme();
   const [scores, setScores] = useState<SavedScore[] | null>(null);
   const [renameTarget, setRenameTarget] = useState<SavedScore | null>(null);
   const [renaming, setRenaming] = useState(false);
-  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -125,53 +124,33 @@ export function LibraryList({ refreshKey, onOpen, onError, emptyAction }: Librar
           {emptyAction}
         </View>
       ) : (
-        <>
-          {scores.length >= SEARCH_MIN_SCORES && (
-            <View className="px-3 py-2">
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="search"
-                className="rounded-lg border px-3 py-2 text-base"
-                style={{
-                  borderColor: colors.border,
-                  backgroundColor: colors.surfaceElevated,
-                  color: colors.text,
-                }}
-                placeholder="Search"
-                placeholderTextColor={colors.textMuted}
-              />
-            </View>
-          )}
-          <FlatList
-            data={filteredScores}
-            keyExtractor={(item) => item.id}
-            ListEmptyComponent={
-              <Text className="px-4 py-6 text-center text-base" style={{ color: colors.textMuted }}>
-                No matching scores.
+        <FlatList
+          data={filteredScores}
+          keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <Text className="px-4 py-6 text-center text-base" style={{ color: colors.textMuted }}>
+              No matching scores.
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => onOpen(item.id)}
+              onLongPress={() => showActions(item)}
+              delayLongPress={LONG_PRESS_DELAY_MS}
+              className="border-b px-4 py-2.5"
+              style={{ borderBottomColor: colors.border }}
+            >
+              <Text className="text-base font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                {item.title}
               </Text>
-            }
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => onOpen(item.id)}
-                onLongPress={() => showActions(item)}
-                delayLongPress={LONG_PRESS_DELAY_MS}
-                className="border-b px-4 py-2.5"
-                style={{ borderBottomColor: colors.border }}
-              >
-                <Text className="text-base font-medium" style={{ color: colors.text }} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text className="text-xs" style={{ color: colors.textMuted }}>
-                  {formatScoreDate(item.createdAt)} · {item.stripCount}{" "}
-                  {item.stripCount === 1 ? "system" : "systems"}
-                </Text>
-              </Pressable>
-            )}
-          />
-        </>
+              <Text className="text-xs" style={{ color: colors.textMuted }}>
+                {formatScoreDate(item.createdAt)} · {item.stripCount}{" "}
+                {item.stripCount === 1 ? "system" : "systems"}
+              </Text>
+            </Pressable>
+          )}
+        />
       )}
 
       {renameTarget && (

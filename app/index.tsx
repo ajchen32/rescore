@@ -31,6 +31,7 @@ import { Menu } from "../components/Menu";
 import { PagePickerOverlay } from "../components/PagePickerOverlay";
 import { READER_BAR_BOTTOM, ReaderBar } from "../components/ReaderBar";
 import { defaultSaveTitle, SaveNameOverlay } from "../components/SaveNameOverlay";
+import { SearchField } from "../components/SearchField";
 import { SplitOverlay } from "../components/SplitOverlay";
 import { StripColumnView } from "../components/StripColumnView";
 import { Toolbar } from "../components/Toolbar";
@@ -157,6 +158,7 @@ export default function HomeScreen() {
   const [barActivity, setBarActivity] = useState(0);
   const [importMenuOpen, setImportMenuOpen] = useState(false);
   const [libraryVersion, setLibraryVersion] = useState(0);
+  const [libraryQuery, setLibraryQuery] = useState("");
   const [pageImportMode, setPageImportMode] = useState<PageImportMode>("pdf");
   const [pendingPdfUri, setPendingPdfUri] = useState<string | null>(null);
   const [pendingImageUris, setPendingImageUris] = useState<string[]>([]);
@@ -1202,7 +1204,7 @@ export default function HomeScreen() {
         ) : (
           <View className="flex-1">
             <Toolbar
-              title="Rescore"
+              center={<SearchField value={libraryQuery} onChangeText={setLibraryQuery} />}
               right={
                 <View className="flex-row items-center gap-1">
                   <IconButton
@@ -1219,6 +1221,7 @@ export default function HomeScreen() {
             />
             <LibraryList
               refreshKey={libraryVersion}
+              query={libraryQuery}
               onOpen={openSavedScore}
               onError={setErrorMessage}
               emptyAction={
