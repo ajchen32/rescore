@@ -1,4 +1,5 @@
-import { Pressable, TextInput, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Keyboard, Pressable, TextInput, View } from "react-native";
 import { Search, X } from "lucide-react-native";
 
 import { useTheme } from "../lib/theme";
@@ -12,6 +13,14 @@ type SearchFieldProps = {
 /** A rounded search box sized to sit inside a Toolbar. */
 export function SearchField({ value, onChangeText, placeholder = "Search" }: SearchFieldProps) {
   const { colors } = useTheme();
+  const inputRef = useRef<TextInput>(null);
+
+  // Closing the keyboard with its own hide key leaves the field focused (cursor still
+  // blinking), so drop focus whenever the keyboard goes away.
+  useEffect(() => {
+    const subscription = Keyboard.addListener("keyboardDidHide", () => inputRef.current?.blur());
+    return () => subscription.remove();
+  }, []);
 
   return (
     <View
@@ -20,6 +29,7 @@ export function SearchField({ value, onChangeText, placeholder = "Search" }: Sea
     >
       <Search size={16} color={colors.textMuted} strokeWidth={2} />
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         autoCapitalize="none"
