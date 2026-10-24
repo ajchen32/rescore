@@ -2,7 +2,7 @@
 
 Read piano sheet music on a phone. Rescore takes a PDF, a scan or photos of a score and splits each page into one strip per line of music. It then shows those strips full-width, a few at a time, so the notes stay large enough to read at the piano. Everything runs on the device, with no upload and no server.
 
-<p align="center"><img src="docs/demo.gif" width="300" alt="Importing three pages of Chopin's Fantaisie-Impromptu, reading it full screen, then opening edit mode and the split screen"></p>
+<p align="center"><img src="docs/demo.gif" width="300" alt="Importing three pages of Chopin's Fantaisie-Impromptu from a PDF, then turning pages in the full-screen reader by tapping"></p>
 
 ## Features
 
@@ -13,13 +13,17 @@ Read piano sheet music on a phone. Rescore takes a PDF, a scan or photos of a sc
 - **Bookmarks:** mark where pieces, movements or passages start, either on whole pages while importing or on any strip in edit mode. Each bookmark starts on a fresh screen, and you can jump to it from the reader or straight from the library.
 - **Library:** scores save automatically. Search covers every score, folder and bookmark, and folders can hold other folders.
 
+Slicing isn't always perfect, so strips can be fixed by hand. Here the "Public Domain" footer was sliced together with a system: split it off, then delete the extra piece:
+
+<p align="center"><img src="docs/cut.gif" width="300" alt="In edit mode, splitting a strip just above its 'Public Domain' footer, deleting the footer piece, and tapping Done"></p>
+
 In landscape the strips get wider, and you can show fewer at a time so the notes are bigger:
 
-<p align="center"><img src="docs/landscape.gif" width="560" alt="Reading the Fantaisie-Impromptu in landscape one strip at a time, then switching to two strips per view and back"></p>
+<p align="center"><img src="docs/landscape.gif" width="560" alt="Reading the Fantaisie-Impromptu in landscape two strips at a time, then switching to one strip per view; the same music stays on screen"></p>
 
-Books with several pieces can go in a folder, with each piece bookmarked as you import it:
+Books with several pieces can go in a folder, with a bookmark where each piece starts (set on pages while importing, or on any strip in edit mode). A bookmark opens straight from the library or from the reader's list:
 
-<p align="center"><img src="docs/books.gif" width="300" alt="Creating a Tchaikovsky folder, importing The Seasons with four pages bookmarked, then opening a piece from the library and jumping to another from the reader's bookmark list"></p>
+<p align="center"><img src="docs/books.gif" width="300" alt="Opening a Tchaikovsky folder, expanding The Seasons to show its four bookmarks, opening No. 3 from the library, then jumping to No. 2 from the reader's bookmark list"></p>
 
 ## How it works
 
@@ -112,4 +116,4 @@ The system picker opens on **Recents**. Use the **☰** menu to reach Downloads 
 | `modules/piano-pdf-parser/cpp` | C++ slicer, unit tests, debug tools and the benchmark |
 | `assets/icon-src` | SVG sources for the app icon (`bash build.sh` regenerates the PNGs) |
 | `scripts/build-release-apk.mjs` | Release APK build from the shared `android/` folder, and install on a phone (`npm run phone`) |
-| `docs/` | The GIFs in this README, recorded on an Android emulator |
+| `docs/` | The GIFs in this README, recorded on an Android emulator (tap markers added afterwards) |
