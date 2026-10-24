@@ -2,19 +2,24 @@
 
 Read piano sheet music on a phone. Rescore takes a PDF, a scan or photos of a score and splits each page into one strip per line of music. It then shows those strips full-width, a few at a time, so the notes stay large enough to read at the piano. Everything runs on the device, with no upload and no server.
 
-<p align="center"><img src="docs/demo.gif" width="300" alt="Importing Chopin's Fantaisie-Impromptu, slicing it into strips, splitting one strip and reading on"></p>
+<p align="center"><img src="docs/demo.gif" width="300" alt="Importing three pages of Chopin's Fantaisie-Impromptu, reading it full screen, then opening edit mode and the split screen"></p>
 
 ## Features
 
-- **Import:** PDFs (choose which pages to use, and reorder them) or photos from the gallery.
+- **Import:** PDFs (choose which pages to use, reorder them, and bookmark where pieces start) or photos from the gallery.
 - **Automatic slicing:** each line of music becomes its own strip. For piano, a line is a *system*: the treble and bass staves joined by a brace, which always stay together.
-- **Reader:** tap or swipe to turn. You set how many strips show at once, separately for portrait and landscape. The reader has a dark mode and keeps the screen awake while you read.
-- **Corrections:** merge a strip with the one above, split a strip at movable cut lines with adjustable overlap, or delete a strip to a restorable garbage bin.
-- **Library:** scores save automatically and reopen from the library or the recent list.
+- **Reader:** full screen. Tap to turn pages (the left third goes back) or swipe right to go back. Swipe up or down, or tap the small `⋯`, for a floating bar that hides itself again. You set how many strips show at once, separately for portrait and landscape, and changing it keeps your place. The reader has a dark mode and keeps the screen awake while you read.
+- **Corrections:** in edit mode, merge a strip with the one above, split a strip at movable cut lines with adjustable overlap, or delete a strip to a restorable list of removed systems.
+- **Bookmarks:** mark where pieces, movements or passages start, either on whole pages while importing or on any strip in edit mode. Each bookmark starts on a fresh screen, and you can jump to it from the reader or straight from the library.
+- **Library:** scores save automatically. Search covers every score, folder and bookmark, and folders can hold other folders.
 
 In landscape the strips get wider, and you can show fewer at a time so the notes are bigger:
 
-<p align="center"><img src="docs/landscape.gif" width="560" alt="Reading the Fantaisie-Impromptu in landscape, changing from three strips per view to two"></p>
+<p align="center"><img src="docs/landscape.gif" width="560" alt="Reading the Fantaisie-Impromptu in landscape one strip at a time, then switching to two strips per view and back"></p>
+
+Books with several pieces can go in a folder, with each piece bookmarked as you import it:
+
+<p align="center"><img src="docs/books.gif" width="300" alt="Creating a Tchaikovsky folder, importing The Seasons with four pages bookmarked, then opening a piece from the library and jumping to another from the reader's bookmark list"></p>
 
 ## How it works
 
@@ -22,11 +27,14 @@ In landscape the strips get wider, and you can show fewer at a time so the notes
 PDF page / photo
   → rendered to grayscale natively (PdfRenderer on Android, PDFKit on iOS)
   → C++ slicer (shared by both platforms) finds each system's brace, then places strip edges
-  → strips encoded as PNGs natively; only file paths and sizes reach JavaScript
-  → React Native reader
+  → each strip re-rendered from the PDF at up to 2× for sharp text, sharpened and saved
+    as a grayscale PNG natively; only file paths and sizes reach JavaScript
+  → React Native reader, which resizes each strip to its exact on-screen size
 ```
 
 The slicer lives in [`modules/piano-pdf-parser/cpp`](modules/piano-pdf-parser/cpp). It binarizes each page, finds the thin vertical brace to the left of each system, and grows a strip around it. Pages without braces fall back to a row-profile method. Strip edges are placed on rows that no ink crosses where possible. Short lines of marks, such as pedal signs, dynamics or tempo words, go with the nearer system. Neighbouring strips overlap on purpose, so notation that crosses a boundary is still readable.
+
+Each strip also keeps its position on the page. The reader uses that to keep indented systems indented, to line up merged strips by their barlines, and to anchor bookmarks so they survive merging, splitting and deleting. Scores, folders and bookmarks are saved on the device, in the app's own storage.
 
 ## Results
 
@@ -36,7 +44,7 @@ These were measured with the benchmark in [`cpp/tools/bench`](modules/piano-pdf-
 |---|---|
 | Lines of music found correctly (93-page graded set) | 99.3% (408 of 411) |
 | Notation at a strip edge still shown whole (landscape view) | 92%, up from 59% before edge snapping |
-| Slicing time per page, Galaxy S24 | about 40 ms (median) |
+| Slicer time per page, Galaxy S24 (finding strips only, not rendering or saving images) | about 40 ms (median) |
 
 The benchmark README explains the method, its limits, and how to rerun it.
 
@@ -47,7 +55,9 @@ This app uses a custom native module, so **Expo Go will not work**. You need a d
 Requirements: Node.js 18+, plus Android Studio for Android or Xcode for iOS. Only the Android build has been tested so far.
 
 ```sh
-npm install
+# installs the exact versions in package-lock.json; --force is needed because
+# react-dom (pulled in by expo-router) wants a newer react than the app uses
+npm ci --force
 
 # development build with Metro
 npm run prebuild:dev        # first time only, or to regenerate android/
@@ -59,6 +69,10 @@ npm run phone
 
 # release APK only, for both phone ABIs (dist/rescore-release.apk)
 npm run build:apk
+
+# checks
+npm test             # Jest tests for the reader logic in lib/
+npm run typecheck
 ```
 
 Release and development builds share the same `android/` folder (the dev client's tools are left out of release builds automatically), so you can switch between `npm run phone` and Metro freely. `npm run phone` builds only the target device's ABI, so incremental builds take seconds. Adding a native dependency still needs a native rebuild (`npx expo run:android`); reloading Metro isn't enough.
@@ -92,8 +106,10 @@ The system picker opens on **Recents**. Use the **☰** menu to reach Downloads 
 
 | Path | What's there |
 |---|---|
-| `app/`, `components/`, `lib/` | React Native screens, reader components, library and corrections logic |
+| `app/`, `components/`, `hooks/` | React Native screen, UI components, and hooks for import, paging, autosave, editing and bookmarks |
+| `lib/` | Library, folders, bookmarks and corrections logic, with Jest tests in `lib/__tests__` (`npm test`) |
 | `modules/piano-pdf-parser/android`, `ios` | Native rendering, PNG encoding and the bridge to the slicer |
 | `modules/piano-pdf-parser/cpp` | C++ slicer, unit tests, debug tools and the benchmark |
 | `assets/icon-src` | SVG sources for the app icon (`bash build.sh` regenerates the PNGs) |
-| `scripts/build-release-apk.mjs` | Release APK build without the dev client |
+| `scripts/build-release-apk.mjs` | Release APK build from the shared `android/` folder, and install on a phone (`npm run phone`) |
+| `docs/` | The GIFs in this README, recorded on an Android emulator |
