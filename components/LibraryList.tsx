@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronDown,
   ChevronLeft,
@@ -76,6 +77,7 @@ export function LibraryList({
   emptyAction,
 }: LibraryListProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [library, setLibrary] = useState<Library | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
   const [actionTarget, setActionTarget] = useState<Target | null>(null);
@@ -358,8 +360,16 @@ export function LibraryList({
           onPress={() => onNavigate(currentPath.slice(0, -1).map((folder) => folder.id))}
           accessibilityRole="button"
           accessibilityLabel={`Back to ${locationOf(currentFolder.parentId)}`}
-          className="flex-row items-center gap-1 border-b px-2 py-2"
-          style={{ borderBottomColor: colors.border, backgroundColor: colors.surfaceElevated }}
+          className="flex-row items-center gap-1 border-b py-2"
+          // Background reaches the screen edges past the side insets, like the toolbar.
+          style={{
+            borderBottomColor: colors.border,
+            backgroundColor: colors.surfaceElevated,
+            marginLeft: -insets.left,
+            marginRight: -insets.right,
+            paddingLeft: 8 + insets.left,
+            paddingRight: 8 + insets.right,
+          }}
         >
           <ChevronLeft size={20} color={colors.text} strokeWidth={2} />
           <View className="min-w-0 flex-1">

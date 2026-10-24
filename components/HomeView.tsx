@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-import { FileText, FolderPlus, Images, Moon, Plus, Sun } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FileText, FolderPlus, Images, Plus } from "lucide-react-native";
 
 import { IconButton } from "./IconButton";
 import { LibraryList } from "./LibraryList";
@@ -15,6 +16,8 @@ import { useTheme } from "../lib/theme";
 const TOOLBAR_HEIGHT = 48;
 const MENU_GAP = 4;
 const MENU_RIGHT = 8;
+// The toolbar's own side padding (Toolbar's px-1.5).
+const TOOLBAR_SIDE_PADDING = 6;
 
 type HomeViewProps = {
   libraryVersion: number;
@@ -47,7 +50,8 @@ export function HomeView({
   onPickPhotos,
   onError,
 }: HomeViewProps) {
-  const { darkMode, toggleDarkMode, colors } = useTheme();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [savingFolder, setSavingFolder] = useState(false);
@@ -73,26 +77,24 @@ export function HomeView({
   return (
     <View className="flex-1">
       <Toolbar
+        // The screen keeps clear of the side insets (camera cutout in landscape);
+        // let the bar's background reach the edges while its contents stay put.
+        style={{
+          marginLeft: -insets.left,
+          marginRight: -insets.right,
+          paddingLeft: TOOLBAR_SIDE_PADDING + insets.left,
+          paddingRight: TOOLBAR_SIDE_PADDING + insets.right,
+        }}
         center={<SearchField value={query} onChangeText={onQueryChange} />}
         right={
-          <View className="flex-row items-center gap-1">
-            <IconButton
-              icon={darkMode ? Sun : Moon}
-              label={darkMode ? "Light mode" : "Dark mode"}
-              variant="sm"
-              ghost
-              iconColor={colors.text}
-              onPress={toggleDarkMode}
-            />
-            <IconButton
-              icon={Plus}
-              label="Import or add a folder"
-              variant="sm"
-              onPress={() => setMenuOpen(true)}
-              disabled={pickBusy}
-              {...primary}
-            />
-          </View>
+          <IconButton
+            icon={Plus}
+            label="Import or add a folder"
+            variant="sm"
+            onPress={() => setMenuOpen(true)}
+            disabled={pickBusy}
+            {...primary}
+          />
         }
       />
       <LibraryList

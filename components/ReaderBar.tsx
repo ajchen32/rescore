@@ -78,6 +78,8 @@ export function ReaderBar({
   const { darkMode, toggleDarkMode, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
+  // The reader already keeps clear of the side insets (camera cutout in
+  // landscape); only the top is left to the bar, since the reader runs under it.
   const top = insets.top + BAR_MARGIN;
 
   const setMenu = (open: boolean) => {
@@ -116,7 +118,7 @@ export function ReaderBar({
     <>
       <View
         className="absolute"
-        style={{ top, left: BAR_MARGIN + insets.left, right: BAR_MARGIN + insets.right }}
+        style={{ top, left: BAR_MARGIN, right: BAR_MARGIN }}
         onTouchStart={onInteraction}
       >
         <Toolbar
@@ -169,7 +171,7 @@ export function ReaderBar({
       {menuOpen && (
         <Menu
           top={top + BAR_HEIGHT + MENU_GAP}
-          right={BAR_MARGIN + insets.right}
+          right={BAR_MARGIN}
           onClose={() => setMenu(false)}
           items={[
             {
