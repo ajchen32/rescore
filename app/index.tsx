@@ -30,7 +30,7 @@ import { LibraryList } from "../components/LibraryList";
 import { Menu } from "../components/Menu";
 import { PagePickerOverlay } from "../components/PagePickerOverlay";
 import { READER_BAR_BOTTOM, ReaderBar } from "../components/ReaderBar";
-import { defaultSaveTitle } from "../components/SaveNameOverlay";
+import { defaultSaveTitle, SaveNameOverlay } from "../components/SaveNameOverlay";
 import { SplitOverlay } from "../components/SplitOverlay";
 import { StripColumnView } from "../components/StripColumnView";
 import { Toolbar } from "../components/Toolbar";
@@ -146,6 +146,7 @@ export default function HomeScreen() {
   );
   const [readerHeight, setReaderHeight] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [renamingTitle, setRenamingTitle] = useState(false);
   const [splitTargetIndex, setSplitTargetIndex] = useState<number | null>(null);
   const [savedScoreId, setSavedScoreId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -220,7 +221,8 @@ export default function HomeScreen() {
   const splitTarget = splitTargetIndex !== null ? strips[splitTargetIndex] : null;
   const splitAvailable = isSplitAvailable();
   const showReader = strips.length > 0;
-  const overlayOpen = splitTarget !== null || showGarbage || phase === "choosing";
+  const overlayOpen =
+    splitTarget !== null || showGarbage || renamingTitle || phase === "choosing";
 
   stripsRef.current = strips;
   garbageRef.current = garbage;
@@ -683,6 +685,10 @@ export default function HomeScreen() {
         setShowGarbage(false);
         return true;
       }
+      if (renamingTitle) {
+        setRenamingTitle(false);
+        return true;
+      }
       if (showReader) {
         void closeReader();
         return true;
@@ -690,7 +696,15 @@ export default function HomeScreen() {
       return false;
     });
     return () => subscription.remove();
-  }, [clearPageSelection, closeReader, phase, showGarbage, showReader, splitTargetIndex]);
+  }, [
+    clearPageSelection,
+    closeReader,
+    phase,
+    renamingTitle,
+    showGarbage,
+    showReader,
+    splitTargetIndex,
+  ]);
 
   const processSelectedPages = useCallback(
     async (cachedUri: string, pageIndices: number[]) => {
@@ -1142,6 +1156,7 @@ export default function HomeScreen() {
                   }
                 }}
                 onOpenGarbage={() => setShowGarbage(true)}
+                onRename={() => setRenamingTitle(true)}
                 onInteraction={bumpBar}
                 onMenuOpenChange={setBarMenuOpen}
               />
@@ -1162,6 +1177,25 @@ export default function HomeScreen() {
                 inverted={darkMode}
                 onRestore={handleRestoreFromGarbage}
                 onClose={() => setShowGarbage(false)}
+              />
+            )}
+
+            {renamingTitle && (
+              <SaveNameOverlay
+                initialTitle={defaultSaveTitle(selectedName)}
+                saving={false}
+                heading="Rename"
+                cancelAccessibilityLabel="Cancel rename"
+                confirmAccessibilityLabel="Rename"
+                onCancel={() => setRenamingTitle(false)}
+                onConfirm={(title) => {
+                  // Autosave picks up the new title along with the rest of the score.
+                  const trimmed = title.trim();
+                  if (trimmed.length > 0) {
+                    setSelectedName(trimmed);
+                  }
+                  setRenamingTitle(false);
+                }}
               />
             )}
           </View>

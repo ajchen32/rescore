@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { colorWithAlpha, useTheme } from "../lib/theme";
 
@@ -8,13 +8,25 @@ type ToolbarProps = {
   subtitle?: string;
   left?: ReactNode;
   right?: ReactNode;
+  // Makes the title tappable (e.g. to rename); the label describes what a tap does.
+  onTitlePress?: () => void;
+  titleAccessibilityLabel?: string;
   // Rounded card that floats over content (the reader) instead of a full-width bar.
   floating?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
 /** The app's one compact bar: optional left actions, a title, right actions. */
-export function Toolbar({ title, subtitle, left, right, floating = false, style }: ToolbarProps) {
+export function Toolbar({
+  title,
+  subtitle,
+  left,
+  right,
+  onTitlePress,
+  titleAccessibilityLabel,
+  floating = false,
+  style,
+}: ToolbarProps) {
   const { colors } = useTheme();
 
   return (
@@ -41,7 +53,14 @@ export function Toolbar({ title, subtitle, left, right, floating = false, style 
       ]}
     >
       {left}
-      <View className="min-w-0 flex-1 px-1.5">
+      <Pressable
+        className="min-w-0 flex-1 self-stretch justify-center px-1.5"
+        disabled={!onTitlePress}
+        onPress={onTitlePress}
+        accessibilityRole={onTitlePress ? "button" : undefined}
+        accessibilityLabel={onTitlePress ? titleAccessibilityLabel : undefined}
+        style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+      >
         {title !== undefined && (
           <Text className="text-base font-semibold" style={{ color: colors.text }} numberOfLines={1}>
             {title}
@@ -52,7 +71,7 @@ export function Toolbar({ title, subtitle, left, right, floating = false, style 
             {subtitle}
           </Text>
         )}
-      </View>
+      </Pressable>
       {right}
     </View>
   );

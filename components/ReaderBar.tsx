@@ -7,6 +7,7 @@ import {
   Minus,
   Moon,
   Pencil,
+  PencilLine,
   Plus,
   Sun,
   Trash2,
@@ -38,6 +39,7 @@ type ReaderBarProps = {
   onIncrease: () => void;
   onToggleEdit: () => void;
   onOpenGarbage: () => void;
+  onRename: () => void;
   // Any press on the bar, so the parent can postpone auto-hide.
   onInteraction: () => void;
   onMenuOpenChange: (open: boolean) => void;
@@ -62,6 +64,7 @@ export function ReaderBar({
   onIncrease,
   onToggleEdit,
   onOpenGarbage,
+  onRename,
   onInteraction,
   onMenuOpenChange,
 }: ReaderBarProps) {
@@ -115,6 +118,8 @@ export function ReaderBar({
           floating
           title={title}
           subtitle={subtitle}
+          onTitlePress={onRename}
+          titleAccessibilityLabel="Rename score"
           left={<IconButton icon={ChevronLeft} label="Back to library" onPress={onBack} {...button} />}
           right={
             <View className="flex-row items-center">
@@ -162,6 +167,7 @@ export function ReaderBar({
           right={BAR_MARGIN + insets.right}
           onClose={() => setMenu(false)}
           items={[
+            { label: "Rename", icon: PencilLine, onPress: onRename },
             {
               label: garbageCount > 0 ? `Removed systems (${garbageCount})` : "Removed systems",
               icon: Trash2,
