@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 import {
   ChevronDown,
   ChevronLeft,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 
 import { ActionSheet, type ActionSheetItem } from "./ActionSheet";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { FolderPickerOverlay } from "./FolderPickerOverlay";
 import { SaveNameOverlay } from "./SaveNameOverlay";
 import { errorFromUnknown } from "../lib/errors";
@@ -80,6 +81,7 @@ export function LibraryList({
   const [actionTarget, setActionTarget] = useState<Target | null>(null);
   const [renameTarget, setRenameTarget] = useState<Target | null>(null);
   const [moveTarget, setMoveTarget] = useState<Target | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Target | null>(null);
   const [renaming, setRenaming] = useState(false);
   // Books whose song list is shown.
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
@@ -186,35 +188,18 @@ export function LibraryList({
     [onError, reload]
   );
 
-  const confirmDelete = useCallback(
-    (target: Target) => {
-      if (target.kind === "score") {
-        Alert.alert(`Delete "${target.score.title}"?`, "This can't be undone.", [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => void runAndReload(() => deleteScore(target.score.id)),
-          },
-        ]);
-        return;
-      }
-      const parentName = locationOf(target.folder.parentId);
-      Alert.alert(
-        `Delete folder "${target.folder.name}"?`,
-        `Its scores and folders move to ${parentName}.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => void runAndReload(() => deleteFolder(target.folder.id)),
-          },
-        ]
-      );
-    },
-    [locationOf, runAndReload]
-  );
+  const handleDeleteConfirm = useCallback(() => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    if (!target) {
+      return;
+    }
+    void runAndReload(() =>
+      target.kind === "score" ? deleteScore(target.score.id) : deleteFolder(target.folder.id)
+    );
+  }, [deleteTarget, runAndReload]);
+
+  const cancelDelete = useCallback(() => setDeleteTarget(null), []);
 
   const actionItems = (target: Target): ActionSheetItem[] => [
     { label: "Rename", icon: PencilLine, onPress: () => setRenameTarget(target) },
@@ -223,7 +208,7 @@ export function LibraryList({
       label: target.kind === "folder" ? "Delete folder" : "Delete",
       icon: Trash2,
       destructive: true,
-      onPress: () => confirmDelete(target),
+      onPress: () => setDeleteTarget(target),
     },
   ];
 
@@ -422,6 +407,25 @@ export function LibraryList({
           title={targetName(actionTarget)}
           items={actionItems(actionTarget)}
           onClose={() => setActionTarget(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title={
+            deleteTarget.kind === "score"
+              ? `Delete "${deleteTarget.score.title}"?`
+              : `Delete folder "${deleteTarget.folder.name}"?`
+          }
+          message={
+            deleteTarget.kind === "score"
+              ? "This can't be undone."
+              : `Its scores and folders move to ${locationOf(deleteTarget.folder.parentId)}.`
+          }
+          confirmLabel="Delete"
+          destructive
+          onConfirm={handleDeleteConfirm}
+          onCancel={cancelDelete}
         />
       )}
 
