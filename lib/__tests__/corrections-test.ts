@@ -1,6 +1,7 @@
 import {
   chunkStrips,
   clampVisibleCount,
+  columnKeepingFirstStrip,
   continuesOnSamePage,
   insertAtPagePosition,
   makeSplitPieceFromLeaves,
@@ -244,6 +245,15 @@ describe("columns", () => {
       ["col-c", 2, ["c"]],
     ]);
     expect(chunkStrips([], 3)).toEqual([]);
+  });
+
+  it("keeps the top system on screen when the count per column changes", () => {
+    // Column 2 of 3 per column starts at system 6.
+    expect(columnKeepingFirstStrip(2, 3, 4)).toBe(1); // systems 4-7
+    expect(columnKeepingFirstStrip(2, 3, 2)).toBe(3); // systems 6-7
+    expect(columnKeepingFirstStrip(2, 3, 1)).toBe(6);
+    expect(columnKeepingFirstStrip(0, 3, 5)).toBe(0);
+    expect(columnKeepingFirstStrip(2, 0, 3)).toBe(0);
   });
 
   it("divides the reader height between visible strips", () => {

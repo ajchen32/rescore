@@ -17,6 +17,7 @@ import {
 import {
   chunkStrips,
   clampVisibleCount,
+  columnKeepingFirstStrip,
   DEFAULT_LANDSCAPE_VISIBLE_COUNT,
   DEFAULT_VISIBLE_COUNT,
   stripSlotHeight,
@@ -181,9 +182,7 @@ export function useReaderPaging({
       const oldVisibleCount = wasLandscape
         ? previous.landscapeVisibleCount
         : previous.portraitVisibleCount;
-      const firstStripIndex = columnIndex * oldVisibleCount;
-      const newColumnIndex = Math.floor(firstStripIndex / activeVisibleCount);
-      setColumnIndex(newColumnIndex);
+      setColumnIndex(columnKeepingFirstStrip(columnIndex, oldVisibleCount, activeVisibleCount));
     }
 
     readerLayoutRef.current = {
@@ -216,23 +215,30 @@ export function useReaderPaging({
     setReaderHeight(event.nativeEvent.layout.height);
   }, []);
 
-  const decreaseVisibleCount = useCallback(() => {
-    if (isLandscape) {
-      setLandscapeVisibleCount((count) => clampVisibleCount(count - 1));
-    } else {
-      setPortraitVisibleCount((count) => clampVisibleCount(count - 1));
-    }
-    setColumnIndex(0);
-  }, [isLandscape, setLandscapeVisibleCount, setPortraitVisibleCount]);
-
-  const increaseVisibleCount = useCallback(() => {
-    if (isLandscape) {
-      setLandscapeVisibleCount((count) => clampVisibleCount(count + 1));
-    } else {
-      setPortraitVisibleCount((count) => clampVisibleCount(count + 1));
-    }
-    setColumnIndex(0);
-  }, [isLandscape, setLandscapeVisibleCount, setPortraitVisibleCount]);
+  // Changing how many systems show per column keeps the top system on screen.
+  const changeVisibleCount = useCallback(
+    (delta: number) => {
+      const nextCount = clampVisibleCount(activeVisibleCount + delta);
+      if (nextCount === activeVisibleCount) {
+        return;
+      }
+      if (isLandscape) {
+        setLandscapeVisibleCount(nextCount);
+      } else {
+        setPortraitVisibleCount(nextCount);
+      }
+      setColumnIndex(columnKeepingFirstStrip(clampedColumnIndex, activeVisibleCount, nextCount));
+    },
+    [
+      activeVisibleCount,
+      clampedColumnIndex,
+      isLandscape,
+      setLandscapeVisibleCount,
+      setPortraitVisibleCount,
+    ]
+  );
+  const decreaseVisibleCount = useCallback(() => changeVisibleCount(-1), [changeVisibleCount]);
+  const increaseVisibleCount = useCallback(() => changeVisibleCount(1), [changeVisibleCount]);
 
   return {
     activeVisibleCount,

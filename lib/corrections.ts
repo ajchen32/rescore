@@ -294,6 +294,22 @@ export function stripSlotHeight(readerHeight: number, visibleCount: number): num
   return Math.max(1, readerHeight / visibleCount);
 }
 
+/**
+ * The column to show after the number of systems per column changes (the -/+
+ * buttons or a rotation), chosen so the system that was at the top of the old
+ * column is still on screen.
+ */
+export function columnKeepingFirstStrip(
+  columnIndex: number,
+  oldVisibleCount: number,
+  newVisibleCount: number
+): number {
+  if (oldVisibleCount <= 0 || newVisibleCount <= 0) {
+    return 0;
+  }
+  return Math.floor((columnIndex * oldVisibleCount) / newVisibleCount);
+}
+
 export function chunkStrips(strips: ReaderStrip[], visibleCount: number): StripColumn[] {
   const columns: StripColumn[] = [];
   for (let index = 0; index < strips.length; index += visibleCount) {
