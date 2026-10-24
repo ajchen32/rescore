@@ -29,8 +29,11 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "^57.0.12",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.6",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.3"
@@ -44,7 +47,11 @@
     "prebuild:dev": "RESCORE_VARIANT=development npx expo prebuild --platform android --clean",
     "build:apk": "node scripts/build-release-apk.mjs",
     "phone": "node scripts/build-release-apk.mjs --install",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo"
+  }
 }
