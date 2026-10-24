@@ -22,6 +22,8 @@ type StripColumnViewProps = {
   allStrips: ReaderStrip[];
   showSeparators?: boolean;
   editing?: boolean;
+  // Top offset for the first strip's edit controls, so they clear the reader bar.
+  firstControlsTop?: number;
   splitAvailable?: boolean;
   inverted?: boolean;
   onMergeUp?: (index: number) => void;
@@ -37,6 +39,7 @@ export function StripColumnView({
   allStrips,
   showSeparators = true,
   editing = false,
+  firstControlsTop,
   splitAvailable = true,
   inverted = false,
   onMergeUp,
@@ -74,6 +77,7 @@ export function StripColumnView({
               insets={stripInsets(strip, frames)}
               extraPageBreakSpacing={extraPageBreakSpacing}
               editing={editing}
+              controlsTop={index === 0 ? firstControlsTop : undefined}
               splitAvailable={splitAvailable}
               inverted={inverted}
               globalIndex={globalIndex}

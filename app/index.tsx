@@ -29,7 +29,7 @@ import { GarbageOverlay } from "../components/GarbageOverlay";
 import { LibraryList } from "../components/LibraryList";
 import { Menu } from "../components/Menu";
 import { PagePickerOverlay } from "../components/PagePickerOverlay";
-import { ReaderBar } from "../components/ReaderBar";
+import { READER_BAR_BOTTOM, ReaderBar } from "../components/ReaderBar";
 import { defaultSaveTitle } from "../components/SaveNameOverlay";
 import { SplitOverlay } from "../components/SplitOverlay";
 import { StripColumnView } from "../components/StripColumnView";
@@ -88,6 +88,8 @@ const CHROME_SWIPE_THRESHOLD = 36;
 const SWIPE_BACK_THRESHOLD = 36;
 const AUTOSAVE_DEBOUNCE_MS = 600;
 const BAR_AUTO_HIDE_MS = 4000;
+// Space between the reader bar and the edit controls of the system under it.
+const EDIT_CONTROLS_GAP = 8;
 const TOOLBAR_HEIGHT = 48;
 const MENU_GAP = 4;
 const SAVE_WAIT_POLL_MS = 50;
@@ -1100,6 +1102,9 @@ export default function HomeScreen() {
                       showSeparators={chromeVisible || editing}
                       allStrips={strips}
                       editing={editing && isActive}
+                      firstControlsTop={
+                        chromeVisible ? insets.top + READER_BAR_BOTTOM + EDIT_CONTROLS_GAP : undefined
+                      }
                       splitAvailable={splitAvailable}
                       inverted={darkMode}
                       onMergeUp={handleMergeUp}

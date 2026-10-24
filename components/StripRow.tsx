@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { ArrowUp, Scissors, Trash2 } from "lucide-react-native";
+import { ArrowUpToLine, Scissors, Trash2 } from "lucide-react-native";
 
 import { ClippedStripImage, StackedStripImages } from "./StripStack";
 import { IconButton } from "./IconButton";
@@ -12,6 +12,8 @@ import {
   type ReaderStrip,
 } from "../lib/corrections";
 
+const CONTROLS_MARGIN = 8;
+
 type StripRowProps = {
   strip: ReaderStrip;
   width: number;
@@ -20,6 +22,8 @@ type StripRowProps = {
   insets?: HorizontalInsets;
   extraPageBreakSpacing?: boolean;
   editing?: boolean;
+  // Distance of the edit controls from the strip's top (moved down to clear the reader bar).
+  controlsTop?: number;
   splitAvailable?: boolean;
   inverted?: boolean;
   globalIndex: number;
@@ -37,6 +41,7 @@ export function StripRow({
   insets,
   extraPageBreakSpacing = false,
   editing = false,
+  controlsTop = CONTROLS_MARGIN,
   splitAvailable = true,
   inverted = false,
   globalIndex,
@@ -64,24 +69,38 @@ export function StripRow({
     >
       {editing && (
         <View
-          className="absolute right-2 top-2 z-10 flex-row items-center gap-1 rounded-xl p-1"
-          style={{ backgroundColor: colorWithAlpha(colors.text, 0.85) }}
+          className="absolute z-10 flex-row items-center rounded-full border px-1 py-0.5"
+          style={{
+            top: controlsTop,
+            right: CONTROLS_MARGIN,
+            backgroundColor: colorWithAlpha(colors.surfaceElevated, 0.96),
+            borderColor: colors.border,
+            elevation: 6,
+            shadowColor: "#000000",
+            shadowOpacity: 0.18,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+          }}
         >
-          <IconButton
-            icon={ArrowUp}
-            label="Merge with system above"
-            variant="sm"
-            ghost
-            iconColor={globalIndex === 0 ? colors.textMuted : colors.background}
-            onPress={onMergeUp}
-            disabled={globalIndex === 0}
-          />
+          {globalIndex > 0 && (
+            <>
+              <IconButton
+                icon={ArrowUpToLine}
+                label="Merge with system above"
+                variant="sm"
+                ghost
+                iconColor={colors.text}
+                onPress={onMergeUp}
+              />
+              <View className="mx-0.5 h-5 w-px" style={{ backgroundColor: colors.border }} />
+            </>
+          )}
           <IconButton
             icon={Scissors}
             label="Split system"
             variant="sm"
             ghost
-            iconColor={splitAvailable ? colors.background : colors.textMuted}
+            iconColor={colors.text}
             onPress={onSplit}
             disabled={!splitAvailable}
           />
@@ -90,7 +109,7 @@ export function StripRow({
             label="Delete system"
             variant="sm"
             ghost
-            iconColor={canDelete ? colors.destructive : colors.textMuted}
+            iconColor={colors.destructive}
             onPress={onDelete}
             disabled={!canDelete}
           />

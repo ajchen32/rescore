@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  Check,
   ChevronLeft,
   Ellipsis,
   Minus,
@@ -21,6 +20,8 @@ import { colorWithAlpha, useTheme } from "../lib/theme";
 const BAR_MARGIN = 8;
 const MENU_GAP = 4;
 const BAR_HEIGHT = 48;
+// Where the bar ends, below the top safe-area inset.
+export const READER_BAR_BOTTOM = BAR_MARGIN + BAR_HEIGHT;
 
 type ReaderBarProps = {
   visible: boolean;
@@ -94,7 +95,14 @@ export function ReaderBar({
   }
 
   const button = { iconColor: colors.text, variant: "sm" as const, ghost: true };
-  const subtitle = saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : undefined;
+  const subtitle =
+    saveStatus === "saving"
+      ? "Saving…"
+      : editing
+        ? "Editing"
+        : saveStatus === "saved"
+          ? "Saved"
+          : undefined;
 
   return (
     <>
@@ -128,14 +136,18 @@ export function ReaderBar({
                 {...button}
               />
               {editing ? (
-                <IconButton
-                  icon={Check}
-                  label="Done editing"
+                <Pressable
                   onPress={onToggleEdit}
-                  {...button}
-                  iconColor={colors.controlActiveText}
+                  accessibilityLabel="Done editing"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  className="mx-1 h-8 items-center justify-center rounded-full px-3"
                   style={{ backgroundColor: colors.controlActive }}
-                />
+                >
+                  <Text className="text-sm font-semibold" style={{ color: colors.controlActiveText }}>
+                    Done
+                  </Text>
+                </Pressable>
               ) : (
                 <IconButton icon={Pencil} label="Correct systems" onPress={onToggleEdit} {...button} />
               )}
