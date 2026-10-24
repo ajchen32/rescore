@@ -287,20 +287,9 @@ function mergedStackX0(parts: ReaderStrip[]): number | undefined {
   return Math.min(...parts.map((part) => part.x0 as number));
 }
 
-export function stripSlotHeight(
-  readerHeight: number,
-  visibleCount: number,
-  includeSeparators = true
-): number {
+export function stripSlotHeight(readerHeight: number, visibleCount: number): number {
   if (readerHeight <= 0 || visibleCount <= 0) {
     return 0;
-  }
-  const gutterTotal = includeSeparators
-    ? Math.max(0, visibleCount - 1) * STRIP_SEPARATOR_HEIGHT
-    : 0;
-  const withGutters = (readerHeight - gutterTotal) / visibleCount;
-  if (withGutters > 0) {
-    return withGutters;
   }
   return Math.max(1, readerHeight / visibleCount);
 }

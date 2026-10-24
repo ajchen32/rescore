@@ -213,8 +213,8 @@ export default function HomeScreen() {
         isActive: index === clampedColumnIndex,
       }));
   }, [clampedColumnIndex, columns]);
-  // Separators only while editing, where strip boundaries matter; reading stays seamless.
-  const slotHeight = stripSlotHeight(readerHeight, activeVisibleCount, editing);
+  // Separators overlay the strip boundaries, so they take no layout space.
+  const slotHeight = stripSlotHeight(readerHeight, activeVisibleCount);
   const splitTarget = splitTargetIndex !== null ? strips[splitTargetIndex] : null;
   const splitAvailable = isSplitAvailable();
   const showReader = strips.length > 0;
@@ -1097,7 +1097,7 @@ export default function HomeScreen() {
                       columnWidth={viewportWidth - insets.left - insets.right}
                       readerHeight={readerHeight}
                       slotHeight={slotHeight}
-                      showSeparators={editing}
+                      showSeparators={chromeVisible || editing}
                       allStrips={strips}
                       editing={editing && isActive}
                       splitAvailable={splitAvailable}

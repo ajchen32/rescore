@@ -12,6 +12,7 @@ import {
 } from "../lib/corrections";
 import { StripRow } from "./StripRow";
 import { StripSeparator } from "./StripSeparator";
+import { STRIP_SEPARATOR_HEIGHT } from "../lib/corrections";
 
 type StripColumnViewProps = {
   column: StripColumn;
@@ -65,7 +66,6 @@ export function StripColumnView({
 
         return (
           <Fragment key={strip.id}>
-            {index > 0 && showSeparators && <StripSeparator />}
             <StripRow
               strip={strip}
               width={columnWidth}
@@ -85,6 +85,18 @@ export function StripColumnView({
           </Fragment>
         );
       })}
+      {/* Drawn over the boundary, not between strips, so toggling them never moves the music. */}
+      {showSeparators &&
+        column.strips.slice(1).map((strip, index) => (
+          <View
+            key={`separator-${strip.id}`}
+            pointerEvents="none"
+            className="absolute left-0 right-0"
+            style={{ top: (index + 1) * resolvedSlotHeight - STRIP_SEPARATOR_HEIGHT / 2 }}
+          >
+            <StripSeparator />
+          </View>
+        ))}
     </View>
   );
 }
