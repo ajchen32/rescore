@@ -33,10 +33,11 @@ import {
   moveScore,
   renameFolder,
   renameScore,
+  savedBookmarks,
   type Library,
   type SavedScore,
 } from "../lib/library";
-import type { Song } from "../lib/songs";
+import type { Bookmark } from "../lib/bookmarks";
 import { useTheme } from "../lib/theme";
 
 const LONG_PRESS_DELAY_MS = 250;
@@ -49,8 +50,8 @@ type LibraryListProps = {
   // Folder ids from the root to the open folder; empty at the library root.
   folderPath: string[];
   onNavigate: (folderPath: string[]) => void;
-  // Opens a score, at a song when one is given.
-  onOpen: (scoreId: string, songId?: string) => void;
+  // Opens a score, at a bookmark when one is given.
+  onOpen: (scoreId: string, bookmarkId?: string) => void;
   onError: (message: string) => void;
   // Shown under the empty state.
   emptyAction?: ReactNode;
@@ -59,7 +60,7 @@ type LibraryListProps = {
 type Row =
   | { kind: "folder"; folder: Folder; location?: string }
   | { kind: "score"; score: SavedScore; location?: string }
-  | { kind: "song"; score: SavedScore; song: Song; location?: string };
+  | { kind: "bookmark"; score: SavedScore; bookmark: Bookmark; location?: string };
 
 type Target = { kind: "folder"; folder: Folder } | { kind: "score"; score: SavedScore };
 
@@ -85,7 +86,7 @@ export function LibraryList({
   const [moveTarget, setMoveTarget] = useState<Target | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Target | null>(null);
   const [renaming, setRenaming] = useState(false);
-  // Books whose song list is shown.
+  // Books whose bookmark list is shown.
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -145,9 +146,9 @@ export function LibraryList({
           .filter((score) => score.title.toLowerCase().includes(needle))
           .map((score): Row => ({ kind: "score", score, location: locationOf(score.folderId) })),
         ...scores.flatMap((score) =>
-          (score.songs ?? [])
-            .filter((song) => song.title.toLowerCase().includes(needle))
-            .map((song): Row => ({ kind: "song", score, song, location: score.title }))
+          savedBookmarks(score)
+            .filter((bookmark) => bookmark.title.toLowerCase().includes(needle))
+            .map((bookmark): Row => ({ kind: "bookmark", score, bookmark, location: score.title }))
         ),
       ];
     }
@@ -158,7 +159,7 @@ export function LibraryList({
         .flatMap((score): Row[] => [
           { kind: "score", score },
           ...(expandedBooks.has(score.id)
-            ? (score.songs ?? []).map((song): Row => ({ kind: "song", score, song }))
+            ? savedBookmarks(score).map((bookmark): Row => ({ kind: "bookmark", score, bookmark }))
             : []),
         ]),
     ];
@@ -286,11 +287,11 @@ export function LibraryList({
       );
     }
 
-    if (item.kind === "song") {
-      const { score, song } = item;
+    if (item.kind === "bookmark") {
+      const { score, bookmark } = item;
       return (
         <Pressable
-          onPress={() => onOpen(score.id, song.id)}
+          onPress={() => onOpen(score.id, bookmark.id)}
           className="flex-row items-center gap-3 border-b py-2.5 pr-4"
           style={{
             borderBottomColor: colors.border,
@@ -299,7 +300,7 @@ export function LibraryList({
         >
           <View className="min-w-0 flex-1">
             <Text className="text-base" style={{ color: colors.text }} numberOfLines={1}>
-              {song.title}
+              {bookmark.title}
             </Text>
             {item.location && (
               <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
@@ -308,14 +309,14 @@ export function LibraryList({
             )}
           </View>
           <Text className="text-xs" style={{ color: colors.textMuted }}>
-            p. {song.start.pageIndex + 1}
+            p. {bookmark.start.pageIndex + 1}
           </Text>
         </Pressable>
       );
     }
 
     const { score } = item;
-    const songCount = score.songs?.length ?? 0;
+    const bookmarkCount = savedBookmarks(score).length;
     const expanded = expandedBooks.has(score.id);
     const Chevron = expanded ? ChevronDown : ChevronRight;
     return (
@@ -333,17 +334,17 @@ export function LibraryList({
           <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
             {item.location ? `${item.location} · ` : ""}
             {formatScoreDate(score.createdAt)} ·{" "}
-            {songCount > 0
-              ? `${songCount} ${songCount === 1 ? "song" : "songs"}`
+            {bookmarkCount > 0
+              ? `${bookmarkCount} ${bookmarkCount === 1 ? "bookmark" : "bookmarks"}`
               : `${score.stripCount} ${score.stripCount === 1 ? "system" : "systems"}`}
           </Text>
         </View>
-        {songCount > 0 && !searching && (
+        {bookmarkCount > 0 && !searching && (
           <Pressable
             onPress={() => toggleBook(score.id)}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={expanded ? "Hide songs" : "Show songs"}
+            accessibilityLabel={expanded ? "Hide bookmarks" : "Show bookmarks"}
             className="h-9 w-9 items-center justify-center rounded-full"
           >
             <Chevron size={20} color={colors.textMuted} strokeWidth={2} />
@@ -398,8 +399,8 @@ export function LibraryList({
           keyExtractor={(item) =>
             item.kind === "folder"
               ? `f-${item.folder.id}`
-              : item.kind === "song"
-                ? `s-${item.score.id}-${item.song.id}`
+              : item.kind === "bookmark"
+                ? `s-${item.score.id}-${item.bookmark.id}`
                 : item.score.id
           }
           keyboardShouldPersistTaps="handled"

@@ -11,6 +11,7 @@ import {
   type StripColumn,
 } from "../lib/corrections";
 import { StripRow } from "./StripRow";
+import type { Bookmark } from "../lib/bookmarks";
 import { StripSeparator } from "./StripSeparator";
 import { STRIP_SEPARATOR_HEIGHT } from "../lib/corrections";
 
@@ -26,6 +27,10 @@ type StripColumnViewProps = {
   firstControlsTop?: number;
   splitAvailable?: boolean;
   inverted?: boolean;
+  // Bookmark starting at each strip index (global), for the edit controls.
+  bookmarksByStart?: Map<number, Bookmark>;
+  onToggleBookmark?: (index: number) => void;
+  onRenameBookmark?: (bookmark: Bookmark) => void;
   onMergeUp?: (index: number) => void;
   onSplit?: (index: number) => void;
   onDelete?: (index: number) => void;
@@ -42,6 +47,9 @@ export function StripColumnView({
   firstControlsTop,
   splitAvailable = true,
   inverted = false,
+  bookmarksByStart,
+  onToggleBookmark,
+  onRenameBookmark,
   onMergeUp,
   onSplit,
   onDelete,
@@ -82,6 +90,14 @@ export function StripColumnView({
               inverted={inverted}
               globalIndex={globalIndex}
               canDelete={allStrips.length > 1}
+              bookmark={bookmarksByStart?.get(globalIndex) ?? null}
+              onToggleBookmark={() => onToggleBookmark?.(globalIndex)}
+              onRenameBookmark={() => {
+                const bookmark = bookmarksByStart?.get(globalIndex);
+                if (bookmark) {
+                  onRenameBookmark?.(bookmark);
+                }
+              }}
               onMergeUp={() => onMergeUp?.(globalIndex)}
               onSplit={() => onSplit?.(globalIndex)}
               onDelete={() => onDelete?.(globalIndex)}

@@ -309,7 +309,7 @@ export function columnContainingStrip(columns: StripColumn[], stripIndex: number
 
 /**
  * Groups strips into columns of `visibleCount`. A column also starts at every
- * index in `breaks` (where a song begins), so each song opens on a fresh screen.
+ * index in `breaks` (where a bookmark begins), so each bookmark opens on a fresh screen.
  */
 export function chunkStrips(
   strips: ReaderStrip[],

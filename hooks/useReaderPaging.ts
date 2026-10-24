@@ -21,7 +21,7 @@ import {
   stripSlotHeight,
   type ReaderStrip,
 } from "../lib/corrections";
-import { songBreaks, type Song } from "../lib/songs";
+import { bookmarkBreaks, type Bookmark } from "../lib/bookmarks";
 
 const CHROME_SWIPE_THRESHOLD = 36;
 const SWIPE_BACK_THRESHOLD = 36;
@@ -31,14 +31,14 @@ type ReaderLayoutSnapshot = {
   height: number;
   // The system at the top of the screen, kept on screen across a rotation.
   firstStripIndex: number;
-  // Where songs force a new column; adding or removing one re-forms the columns.
+  // Where bookmarks force a new column; adding or removing one re-forms the columns.
   breaksKey: string;
 };
 
 type ReaderPagingOptions = {
   strips: ReaderStrip[];
-  // Each song starts on a fresh column.
-  songs: Song[];
+  // Each bookmark starts on a fresh column.
+  bookmarks: Bookmark[];
   portraitVisibleCount: number;
   landscapeVisibleCount: number;
   setPortraitVisibleCount: Dispatch<SetStateAction<number>>;
@@ -54,7 +54,7 @@ type ReaderPagingOptions = {
  */
 export function useReaderPaging({
   strips,
-  songs,
+  bookmarks,
   portraitVisibleCount,
   landscapeVisibleCount,
   setPortraitVisibleCount,
@@ -76,7 +76,7 @@ export function useReaderPaging({
 
   const activeVisibleCount = isLandscape ? landscapeVisibleCount : portraitVisibleCount;
 
-  const breaks = useMemo(() => songBreaks(strips, songs), [songs, strips]);
+  const breaks = useMemo(() => bookmarkBreaks(strips, bookmarks), [bookmarks, strips]);
   const columns = useMemo(
     () => chunkStrips(strips, activeVisibleCount, breaks),
     [activeVisibleCount, breaks, strips]
@@ -177,7 +177,7 @@ export function useReaderPaging({
     })
   ).current;
 
-  // When the columns are re-formed by a rotation or by adding or removing a song,
+  // When the columns are re-formed by a rotation or by adding or removing a bookmark,
   // keep the system that was at the top of the screen visible.
   const breaksKey = breaks.join(",");
   useEffect(() => {

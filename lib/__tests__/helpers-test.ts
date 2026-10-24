@@ -2,6 +2,7 @@ import {
   normalizeFileUri,
   resolveLandscapeVisibleCount,
   resolvePortraitVisibleCount,
+  savedBookmarks,
   savedStripToReaderStrip,
   uniqueScoreTitle,
   type SavedScore,
@@ -53,6 +54,20 @@ describe("saved scores", () => {
 
   // "file:/data/x.png" currently becomes "file://data/x.png" (one slash short).
   it.todo("repairs single-slash file URIs");
+});
+
+describe("savedBookmarks", () => {
+  const mark = { id: "b", title: "Nocturne 2", start: { pageIndex: 7, y0: 0 } };
+
+  it("reads bookmarks, and songs saved by earlier builds", () => {
+    expect(savedBookmarks({ bookmarks: [mark] })).toEqual([mark]);
+    expect(savedBookmarks({ songs: [mark] })).toEqual([mark]);
+    expect(savedBookmarks({})).toEqual([]);
+  });
+
+  it("prefers bookmarks over the legacy field", () => {
+    expect(savedBookmarks({ bookmarks: [], songs: [mark] })).toEqual([]);
+  });
 });
 
 describe("isPdfAsset", () => {

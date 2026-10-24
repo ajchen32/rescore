@@ -9,7 +9,7 @@ import {
   type ReaderStrip,
 } from "./corrections";
 import { canMoveFolder, removeFolder, type Folder } from "./folders";
-import type { Song } from "./songs";
+import type { Bookmark } from "./bookmarks";
 import { getImagePixelSize } from "./splitStrip";
 
 export type SavedStrip = {
@@ -35,8 +35,10 @@ export type SavedScore = {
   garbage?: SavedStrip[];
   // The folder it's filed in; missing or null means the library root.
   folderId?: string | null;
-  // Pieces inside a book, in reading order.
-  songs?: Song[];
+  // Places to jump to (pieces in a book, movements, passages), in reading order.
+  bookmarks?: Bookmark[];
+  // Legacy name for `bookmarks` (saved by earlier builds); read through `savedBookmarks`.
+  songs?: Bookmark[];
 };
 
 export type Library = {
@@ -54,8 +56,8 @@ export type SaveScoreInput = {
   landscapeVisibleCount?: number;
   // Where a new score is filed; an existing score keeps its folder.
   folderId?: string | null;
-  // Leave out to keep the saved songs; an empty list removes them.
-  songs?: Song[];
+  // Leave out to keep the saved bookmarks; an empty list removes them.
+  bookmarks?: Bookmark[];
 };
 
 export function resolvePortraitVisibleCount(score: SavedScore): number {
@@ -428,7 +430,9 @@ export async function saveScore(input: SaveScoreInput): Promise<SaveScoreResult>
       strips: finalStrips,
       garbage: finalGarbage.length > 0 ? finalGarbage : undefined,
       folderId: previous ? previous.folderId : (input.folderId ?? null),
-      songs: songsToSave(input.songs ?? previous?.songs),
+      bookmarks: bookmarksToSave(
+        input.bookmarks ?? (previous ? savedBookmarks(previous) : undefined)
+      ),
     };
 
     const library = await loadLibrary();
@@ -446,8 +450,13 @@ export async function saveScore(input: SaveScoreInput): Promise<SaveScoreResult>
   }
 }
 
-function songsToSave(songs: Song[] | undefined): Song[] | undefined {
-  return songs && songs.length > 0 ? songs : undefined;
+/** A score's bookmarks, including ones saved under their old name, "songs". */
+export function savedBookmarks(score: Pick<SavedScore, "bookmarks" | "songs">): Bookmark[] {
+  return score.bookmarks ?? score.songs ?? [];
+}
+
+function bookmarksToSave(bookmarks: Bookmark[] | undefined): Bookmark[] | undefined {
+  return bookmarks && bookmarks.length > 0 ? bookmarks : undefined;
 }
 
 export async function deleteScore(id: string): Promise<void> {

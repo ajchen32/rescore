@@ -6,78 +6,62 @@ import { PencilLine, Trash2, X } from "lucide-react-native";
 import { ActionSheet } from "./ActionSheet";
 import { IconButton } from "./IconButton";
 import { Toolbar } from "./Toolbar";
-import type { Song } from "../lib/songs";
+import type { Bookmark } from "../lib/bookmarks";
 import { useTheme } from "../lib/theme";
 
-type SongsOverlayProps = {
-  songs: { song: Song; startIndex: number }[];
-  currentSongId: string | null;
-  onJump: (songId: string) => void;
-  onMarkSong: () => void;
-  onRename: (song: Song) => void;
-  onRemove: (songId: string) => void;
+type BookmarksOverlayProps = {
+  bookmarks: { bookmark: Bookmark; startIndex: number }[];
+  currentBookmarkId: string | null;
+  onJump: (bookmarkId: string) => void;
+  onRename: (bookmark: Bookmark) => void;
+  onRemove: (bookmarkId: string) => void;
   onClose: () => void;
 };
 
-/** A book's songs: tap to jump, long-press to rename or remove. */
-export function SongsOverlay({
-  songs,
-  currentSongId,
+/** A score's bookmarks: tap to jump, long-press to rename or remove. */
+export function BookmarksOverlay({
+  bookmarks,
+  currentBookmarkId,
   onJump,
-  onMarkSong,
   onRename,
   onRemove,
   onClose,
-}: SongsOverlayProps) {
+}: BookmarksOverlayProps) {
   const { colors } = useTheme();
-  const [actionSong, setActionSong] = useState<Song | null>(null);
+  const [actionBookmark, setActionBookmark] = useState<Bookmark | null>(null);
 
   return (
     <View className="absolute inset-0 z-20" style={{ backgroundColor: colors.background }}>
       <SafeAreaView className="flex-1">
         <Toolbar
-          title="Songs"
-          subtitle={`${songs.length} ${songs.length === 1 ? "song" : "songs"}`}
+          title="Bookmarks"
+          subtitle={`${bookmarks.length} ${bookmarks.length === 1 ? "bookmark" : "bookmarks"}`}
           left={
             <IconButton
               icon={X}
-              label="Close songs"
+              label="Close bookmarks"
               variant="sm"
               ghost
               iconColor={colors.text}
               onPress={onClose}
             />
           }
-          right={
-            <Pressable
-              onPress={onMarkSong}
-              accessibilityRole="button"
-              accessibilityLabel="Mark a song starting at the top of the screen"
-              hitSlop={8}
-              className="mx-1 h-8 items-center justify-center rounded-full px-3"
-              style={{ backgroundColor: colors.controlActive }}
-            >
-              <Text className="text-sm font-semibold" style={{ color: colors.controlActiveText }}>
-                Mark here
-              </Text>
-            </Pressable>
-          }
         />
         <FlatList
-          data={songs}
-          keyExtractor={({ song }) => song.id}
+          data={bookmarks}
+          keyExtractor={({ bookmark }) => bookmark.id}
           ListEmptyComponent={
             <Text className="px-6 py-8 text-center text-sm" style={{ color: colors.textMuted }}>
-              No songs yet. Close this list, turn to where a piece starts, then come back and tap
-              Mark here.
+              No bookmarks yet. Tap Edit, then the bookmark button on the system where one should
+              start.
             </Text>
           }
-          renderItem={({ item: { song } }) => {
-            const current = song.id === currentSongId;
+          renderItem={({ item: { bookmark } }) => {
+            const current = bookmark.id === currentBookmarkId;
             return (
               <Pressable
-                onPress={() => onJump(song.id)}
-                onLongPress={() => setActionSong(song)}
+                onPress={() => onJump(bookmark.id)}
+                onLongPress={() => setActionBookmark(bookmark)}
                 delayLongPress={250}
                 accessibilityRole="button"
                 className="flex-row items-center gap-3 border-b px-4 py-3"
@@ -95,10 +79,10 @@ export function SongsOverlay({
                   style={{ color: colors.text }}
                   numberOfLines={1}
                 >
-                  {song.title}
+                  {bookmark.title}
                 </Text>
                 <Text className="text-xs" style={{ color: colors.textMuted }}>
-                  p. {song.start.pageIndex + 1}
+                  p. {bookmark.start.pageIndex + 1}
                 </Text>
               </Pressable>
             );
@@ -106,19 +90,19 @@ export function SongsOverlay({
         />
       </SafeAreaView>
 
-      {actionSong && (
+      {actionBookmark && (
         <ActionSheet
-          title={actionSong.title}
+          title={actionBookmark.title}
           items={[
-            { label: "Rename", icon: PencilLine, onPress: () => onRename(actionSong) },
+            { label: "Rename", icon: PencilLine, onPress: () => onRename(actionBookmark) },
             {
-              label: "Remove song mark",
+              label: "Remove bookmark",
               icon: Trash2,
               destructive: true,
-              onPress: () => onRemove(actionSong.id),
+              onPress: () => onRemove(actionBookmark.id),
             },
           ]}
-          onClose={() => setActionSong(null)}
+          onClose={() => setActionBookmark(null)}
         />
       )}
     </View>

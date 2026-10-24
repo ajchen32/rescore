@@ -1,5 +1,5 @@
 import type { ReaderStrip } from "./corrections";
-import type { Song } from "./songs";
+import type { Bookmark } from "./bookmarks";
 
 /** What autosave compares to decide whether the open score changed since its last save. */
 export type PersistSnapshot = {
@@ -8,7 +8,7 @@ export type PersistSnapshot = {
   portraitVisibleCount: number;
   landscapeVisibleCount: number;
   title: string;
-  songsJson: string;
+  bookmarksJson: string;
 };
 
 export function buildPersistSnapshot(
@@ -17,7 +17,7 @@ export function buildPersistSnapshot(
   portraitVisibleCount: number,
   landscapeVisibleCount: number,
   title: string,
-  songs: Song[] = []
+  bookmarks: Bookmark[] = []
 ): PersistSnapshot {
   return {
     stripsJson: JSON.stringify(strips),
@@ -25,7 +25,7 @@ export function buildPersistSnapshot(
     portraitVisibleCount,
     landscapeVisibleCount,
     title,
-    songsJson: JSON.stringify(songs),
+    bookmarksJson: JSON.stringify(bookmarks),
   };
 }
 
@@ -36,6 +36,6 @@ export function persistSnapshotsEqual(a: PersistSnapshot, b: PersistSnapshot): b
     a.portraitVisibleCount === b.portraitVisibleCount &&
     a.landscapeVisibleCount === b.landscapeVisibleCount &&
     a.title === b.title &&
-    a.songsJson === b.songsJson
+    a.bookmarksJson === b.bookmarksJson
   );
 }

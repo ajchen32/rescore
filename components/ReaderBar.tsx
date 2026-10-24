@@ -33,9 +33,9 @@ type ReaderBarProps = {
   canIncrease: boolean;
   editing: boolean;
   garbageCount: number;
-  songCount: number;
-  // The song on screen, shown under the title in a book.
-  currentSongTitle: string | null;
+  bookmarkCount: number;
+  // The bookmark being read, shown under the title.
+  currentBookmarkTitle: string | null;
   onShow: () => void;
   onBack: () => void;
   onDecrease: () => void;
@@ -43,7 +43,7 @@ type ReaderBarProps = {
   onToggleEdit: () => void;
   onOpenGarbage: () => void;
   onRename: () => void;
-  onOpenSongs: () => void;
+  onOpenBookmarks: () => void;
   // Any press on the bar, so the parent can postpone auto-hide.
   onInteraction: () => void;
   onMenuOpenChange: (open: boolean) => void;
@@ -62,8 +62,8 @@ export function ReaderBar({
   canIncrease,
   editing,
   garbageCount,
-  songCount,
-  currentSongTitle,
+  bookmarkCount,
+  currentBookmarkTitle,
   onShow,
   onBack,
   onDecrease,
@@ -71,7 +71,7 @@ export function ReaderBar({
   onToggleEdit,
   onOpenGarbage,
   onRename,
-  onOpenSongs,
+  onOpenBookmarks,
   onInteraction,
   onMenuOpenChange,
 }: ReaderBarProps) {
@@ -112,7 +112,7 @@ export function ReaderBar({
       ? "Saving…"
       : editing
         ? "Editing"
-        : (currentSongTitle ?? (saveStatus === "saved" ? "Saved" : undefined));
+        : (currentBookmarkTitle ?? (saveStatus === "saved" ? "Saved" : undefined));
 
   return (
     <>
@@ -175,9 +175,9 @@ export function ReaderBar({
           onClose={() => setMenu(false)}
           items={[
             {
-              label: songCount > 0 ? `Songs (${songCount})` : "Songs",
+              label: bookmarkCount > 0 ? `Bookmarks (${bookmarkCount})` : "Bookmarks",
               icon: ListMusic,
-              onPress: onOpenSongs,
+              onPress: onOpenBookmarks,
             },
             {
               label: garbageCount > 0 ? `Removed systems (${garbageCount})` : "Removed systems",

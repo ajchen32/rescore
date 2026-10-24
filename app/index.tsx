@@ -12,15 +12,17 @@ import { usePageImport, type AppPhase } from "../hooks/usePageImport";
 import { useReaderBar } from "../hooks/useReaderBar";
 import { useReaderPaging } from "../hooks/useReaderPaging";
 import { useScorePersistence } from "../hooks/useScorePersistence";
-import { useSongDialogs, useSongs } from "../hooks/useSongs";
+import { useBookmarkDialogs, useBookmarks } from "../hooks/useBookmarks";
 import { useStripEditing } from "../hooks/useStripEditing";
 import {
   DEFAULT_LANDSCAPE_VISIBLE_COUNT,
   DEFAULT_VISIBLE_COUNT,
   type ReaderStrip,
 } from "../lib/corrections";
-import { songStartIndices, type Song } from "../lib/songs";
+import { bookmarkStartIndices, type Bookmark } from "../lib/bookmarks";
 import { useTheme } from "../lib/theme";
+
+const NO_BOOKMARKS: Bookmark[] = [];
 
 export default function HomeScreen() {
   const { darkMode, colors } = useTheme();
@@ -29,7 +31,7 @@ export default function HomeScreen() {
   const [garbage, setGarbage] = useState<ReaderStrip[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [songs, setSongs] = useState<Song[]>([]);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [portraitVisibleCount, setPortraitVisibleCount] = useState(DEFAULT_VISIBLE_COUNT);
   const [landscapeVisibleCount, setLandscapeVisibleCount] = useState(
     DEFAULT_LANDSCAPE_VISIBLE_COUNT
@@ -39,23 +41,25 @@ export default function HomeScreen() {
   const [libraryQuery, setLibraryQuery] = useState("");
   // Folder ids from the library root to the open folder.
   const [folderPath, setFolderPath] = useState<string[]>([]);
-  // A song to open at once its score has loaded (from tapping a song in the library).
-  const pendingSongIdRef = useRef<string | null>(null);
-  const [songToShow, setSongToShow] = useState<string | null>(null);
+  // A bookmark to open at once its score has loaded (from tapping a bookmark in the library).
+  const pendingBookmarkIdRef = useRef<string | null>(null);
+  const [bookmarkToShow, setBookmarkToShow] = useState<string | null>(null);
 
   const showReader = strips.length > 0;
   const edit = useStripEditing({ strips, garbage, setStrips, setGarbage, setErrorMessage });
-  const songDialogs = useSongDialogs();
+  const bookmarkDialogs = useBookmarkDialogs();
   const overlayOpen =
     edit.splitTarget !== null ||
     edit.showGarbage ||
     renamingTitle ||
-    songDialogs.open ||
+    bookmarkDialogs.open ||
     phase === "choosing";
   const bar = useReaderBar({ showReader, editing: edit.editing, overlayOpen });
   const paging = useReaderPaging({
     strips,
-    songs,
+    // Bookmarks start fresh screens, but not while editing: marking a system would
+    // otherwise move it off the screen you're working on.
+    bookmarks: edit.editing ? NO_BOOKMARKS : bookmarks,
     portraitVisibleCount,
     landscapeVisibleCount,
     setPortraitVisibleCount,
@@ -65,38 +69,38 @@ export default function HomeScreen() {
     bumpBar: bar.bumpBar,
   });
   const { setColumnIndex, jumpToStrip } = paging;
-  const songsApi = useSongs({
+  const bookmarksApi = useBookmarks({
     strips,
-    songs,
-    setSongs,
+    bookmarks,
+    setBookmarks,
     firstStripIndex: paging.firstStripIndex,
     jumpToStrip,
-    dialogs: songDialogs,
+    dialogs: bookmarkDialogs,
   });
   const resetEditing = edit.reset;
   const resetBar = bar.reset;
-  const resetSongDialogs = songDialogs.reset;
+  const resetBookmarkDialogs = bookmarkDialogs.reset;
 
   const handleScoreLoaded = useCallback(() => {
     setPhase("done");
     resetEditing();
-    resetSongDialogs();
+    resetBookmarkDialogs();
     setColumnIndex(0);
-    setSongToShow(pendingSongIdRef.current);
-    pendingSongIdRef.current = null;
-  }, [resetEditing, resetSongDialogs, setColumnIndex]);
+    setBookmarkToShow(pendingBookmarkIdRef.current);
+    pendingBookmarkIdRef.current = null;
+  }, [resetEditing, resetBookmarkDialogs, setColumnIndex]);
 
-  // Opening a song from the library: jump once the score's columns exist.
+  // Opening a bookmark from the library: jump once the score's columns exist.
   useEffect(() => {
-    if (songToShow === null || strips.length === 0) {
+    if (bookmarkToShow === null || strips.length === 0) {
       return;
     }
-    const start = songStartIndices(strips, songs).get(songToShow);
+    const start = bookmarkStartIndices(strips, bookmarks).get(bookmarkToShow);
     if (start !== undefined) {
       jumpToStrip(start);
     }
-    setSongToShow(null);
-  }, [jumpToStrip, songToShow, songs, strips]);
+    setBookmarkToShow(null);
+  }, [jumpToStrip, bookmarkToShow, bookmarks, strips]);
 
   const persistence = useScorePersistence({
     ready: phase === "done",
@@ -105,12 +109,12 @@ export default function HomeScreen() {
     portraitVisibleCount,
     landscapeVisibleCount,
     selectedName,
-    songs,
+    bookmarks,
     newScoreFolderId: folderPath.at(-1) ?? null,
     setStrips,
     setGarbage,
     setSelectedName,
-    setSongs,
+    setBookmarks,
     setPortraitVisibleCount,
     setLandscapeVisibleCount,
     setErrorMessage,
@@ -119,8 +123,8 @@ export default function HomeScreen() {
   const { startNewScore, flushSave, endSession, openSavedScore } = persistence;
 
   const openScore = useCallback(
-    (scoreId: string, songId?: string) => {
-      pendingSongIdRef.current = songId ?? null;
+    (scoreId: string, bookmarkId?: string) => {
+      pendingBookmarkIdRef.current = bookmarkId ?? null;
       openSavedScore(scoreId);
     },
     [openSavedScore]
@@ -132,12 +136,12 @@ export default function HomeScreen() {
     setGarbage([]);
     setErrorMessage(null);
     setSelectedName(null);
-    setSongs([]);
+    setBookmarks([]);
     setColumnIndex(0);
     resetEditing();
     resetBar();
-    resetSongDialogs();
-  }, [resetBar, resetEditing, resetSongDialogs, setColumnIndex]);
+    resetBookmarkDialogs();
+  }, [resetBar, resetEditing, resetBookmarkDialogs, setColumnIndex]);
 
   const beginImport = useCallback(() => {
     startNewScore();
@@ -183,11 +187,11 @@ export default function HomeScreen() {
 
   const { splitTargetIndex, setSplitTargetIndex, showGarbage, setShowGarbage } = edit;
   const {
-    naming: songNaming,
-    setNaming: setSongNaming,
-    listOpen: songListOpen,
-    setListOpen: setSongListOpen,
-  } = songDialogs;
+    renaming: bookmarkRenaming,
+    setRenaming: setBookmarkRenaming,
+    listOpen: bookmarkListOpen,
+    setListOpen: setBookmarkListOpen,
+  } = bookmarkDialogs;
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (phase === "choosing") {
@@ -202,12 +206,12 @@ export default function HomeScreen() {
         setShowGarbage(false);
         return true;
       }
-      if (songNaming) {
-        setSongNaming(null);
+      if (bookmarkRenaming) {
+        setBookmarkRenaming(null);
         return true;
       }
-      if (songListOpen) {
-        setSongListOpen(false);
+      if (bookmarkListOpen) {
+        setBookmarkListOpen(false);
         return true;
       }
       if (renamingTitle) {
@@ -232,12 +236,12 @@ export default function HomeScreen() {
     phase,
     renamingTitle,
     setShowGarbage,
-    setSongListOpen,
-    setSongNaming,
+    setBookmarkListOpen,
+    setBookmarkRenaming,
     setSplitTargetIndex,
     showGarbage,
-    songListOpen,
-    songNaming,
+    bookmarkListOpen,
+    bookmarkRenaming,
     showReader,
     splitTargetIndex,
   ]);
@@ -279,7 +283,7 @@ export default function HomeScreen() {
             paging={paging}
             bar={bar}
             edit={edit}
-            songs={songsApi}
+            bookmarks={bookmarksApi}
             renaming={renamingTitle}
             onStartRename={() => setRenamingTitle(true)}
             onCancelRename={() => setRenamingTitle(false)}

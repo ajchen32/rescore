@@ -30,7 +30,7 @@ type HomeViewProps = {
   pickBusy: boolean;
   // Message for the full-screen spinner while an import copies or slices; null hides it.
   busyMessage: string | null;
-  onOpenScore: (scoreId: string, songId?: string) => void;
+  onOpenScore: (scoreId: string, bookmarkId?: string) => void;
   onPickPdf: () => void;
   onPickPhotos: () => void;
   onError: (message: string) => void;

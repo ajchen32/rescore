@@ -12,9 +12,9 @@ describe("persist snapshots", () => {
     );
   });
 
-  it("notices a change to songs", () => {
-    const song = { id: "s", title: "Nocturne", start: { pageIndex: 0, y0: 0 } };
-    expect(persistSnapshotsEqual(base, buildPersistSnapshot([strip], [], 3, 1, "Nocturne", [song]))).toBe(
+  it("notices a change to bookmarks", () => {
+    const bookmark = { id: "s", title: "Nocturne", start: { pageIndex: 0, y0: 0 } };
+    expect(persistSnapshotsEqual(base, buildPersistSnapshot([strip], [], 3, 1, "Nocturne", [bookmark]))).toBe(
       false
     );
   });
