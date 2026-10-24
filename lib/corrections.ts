@@ -89,6 +89,19 @@ export function insertAtPagePosition(
   return next;
 }
 
+/**
+ * Relabels slicer output from PDF page numbers to positions in the import
+ * order, so pages the user reordered stay in that order (strips are sorted by
+ * page) and "p. N" means the Nth imported page.
+ */
+export function relabelPages<T extends Strip>(strips: T[], pageOrder: number[]): T[] {
+  const positions = new Map(pageOrder.map((pageIndex, position) => [pageIndex, position]));
+  return strips.map((strip) => ({
+    ...strip,
+    pageIndex: positions.get(strip.pageIndex) ?? strip.pageIndex,
+  }));
+}
+
 export function toReaderStrips(strips: Strip[]): ReaderStrip[] {
   return sortByPagePosition(
     strips.map((strip, index) => ({

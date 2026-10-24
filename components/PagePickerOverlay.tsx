@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getPdfPagePreview, type PagePreview } from "piano-pdf-parser-core";
-import { ArrowDownUp, CheckSquare, Square, X } from "lucide-react-native";
+import { ArrowDownUp, Bookmark, CheckSquare, Square, X } from "lucide-react-native";
 
 import { IconButton } from "./IconButton";
 import { MusicImage } from "./MusicImage";
@@ -27,6 +27,11 @@ type PagePickerOverlayProps = {
   reorderMode: boolean;
   orderSequence: number[];
   selectedPageIndices: Set<number>;
+  // In bookmark mode, tapping a page marks where a piece starts instead of selecting it.
+  bookmarkMode: boolean;
+  bookmarkedPages: Set<number>;
+  onToggleBookmarkMode: () => void;
+  onToggleBookmark: (pageIndex: number) => void;
   onToggleReorderMode: () => void;
   onTogglePage: (pageIndex: number) => void;
   onSelectAll: () => void;
@@ -57,6 +62,10 @@ export function PagePickerOverlay({
   reorderMode,
   orderSequence,
   selectedPageIndices,
+  bookmarkMode,
+  bookmarkedPages,
+  onToggleBookmarkMode,
+  onToggleBookmark,
   onToggleReorderMode,
   onTogglePage,
   onSelectAll,
@@ -177,9 +186,11 @@ export function PagePickerOverlay({
     [fadeZoomOut, importMode, openZoom, pdfUri, previews, zoomOpacity]
   );
 
-  const countLabel = reorderMode
-    ? `${selectedCount} in order · tap pages to number them`
-    : `${selectedCount} of ${previews.length} ${importMode === "photos" ? "photos" : "pages"}`;
+  const countLabel = bookmarkMode
+    ? `${bookmarkedPages.size} bookmarked · tap pages where a piece starts`
+    : reorderMode
+      ? `${selectedCount} in order · tap pages to number them`
+      : `${selectedCount} of ${previews.length} ${importMode === "photos" ? "photos" : "pages"}`;
   const allSelected = selectedCount === previews.length;
   const toolbarButton = { variant: "sm" as const, ghost: true, iconColor: colors.text };
 
@@ -197,6 +208,14 @@ export function PagePickerOverlay({
                 label={allSelected ? "Clear selection" : "Select all pages"}
                 onPress={allSelected ? onClear : onSelectAll}
                 {...toolbarButton}
+              />
+              <IconButton
+                icon={Bookmark}
+                label={bookmarkMode ? "Done bookmarking" : "Bookmark pages"}
+                onPress={onToggleBookmarkMode}
+                {...toolbarButton}
+                iconColor={bookmarkMode ? colors.controlActiveText : colors.text}
+                style={bookmarkMode ? { backgroundColor: colors.controlActive } : undefined}
               />
               <IconButton
                 icon={ArrowDownUp}
@@ -242,6 +261,7 @@ export function PagePickerOverlay({
               : selectedPageIndices.has(item.pageIndex);
             const aspectRatio = item.width > 0 ? item.width / item.height : 0.7;
             const tileHeight = tileWidth / aspectRatio;
+            const bookmarked = bookmarkedPages.has(item.pageIndex);
             const caption =
               reorderMode && inSequence
                 ? importMode === "pdf"
@@ -253,7 +273,9 @@ export function PagePickerOverlay({
 
             return (
               <Pressable
-                onPress={() => onTogglePage(item.pageIndex)}
+                onPress={() =>
+                  bookmarkMode ? onToggleBookmark(item.pageIndex) : onTogglePage(item.pageIndex)
+                }
                 onLongPress={() => handleLongPress(item.pageIndex)}
                 delayLongPress={LONG_PRESS_DELAY_MS}
                 onPressOut={closeZoom}
@@ -292,6 +314,19 @@ export function PagePickerOverlay({
                     </Text>
                   ) : null}
                 </View>
+                {bookmarked && (
+                  <View
+                    className="absolute left-1 top-1 h-6 w-6 items-center justify-center rounded-full"
+                    style={{ backgroundColor: colorWithAlpha(colors.surfaceElevated, 0.9) }}
+                  >
+                    <Bookmark
+                      size={14}
+                      color={colors.controlActive}
+                      fill={colors.controlActive}
+                      strokeWidth={2}
+                    />
+                  </View>
+                )}
                 {caption !== null && (
                   <View
                     className="absolute bottom-1 left-1 rounded px-1.5 py-0.5"

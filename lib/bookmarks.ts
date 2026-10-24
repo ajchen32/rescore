@@ -91,6 +91,22 @@ export function addBookmark(bookmarks: Bookmark[], bookmark: Bookmark): Bookmark
   return [...bookmarks, bookmark].sort((a, b) => comparePosition(a.start, b.start));
 }
 
+/**
+ * Bookmarks for pages marked in the import picker, in import order: each starts
+ * at its page's first system. `pageOrder` lists the imported pages (picker
+ * indices) in import order; marks on pages not imported are dropped.
+ */
+export function pageBookmarks(pageOrder: number[], markedPages: Set<number>): Bookmark[] {
+  let count = 0;
+  return pageOrder.flatMap((page, position) => {
+    if (!markedPages.has(page)) {
+      return [];
+    }
+    count += 1;
+    return [{ id: newBookmarkId(), title: `Bookmark ${count}`, start: { pageIndex: position, y0: 0 } }];
+  });
+}
+
 export function newBookmarkId(): string {
   return `bookmark-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

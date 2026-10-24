@@ -17,6 +17,7 @@ import {
   moveToGarbage,
   overlapPxWithNext,
   pageFrames,
+  relabelPages,
   replaceAt,
   restoreFromGarbage,
   sortByPagePosition,
@@ -95,6 +96,17 @@ describe("page order", () => {
       "x",
       "b",
     ]);
+  });
+
+  it("relabels pages to their import position so a chosen order survives sorting", () => {
+    const sliced = [
+      { uri: "a", width: 10, height: 10, pageIndex: 2, y0: 0 },
+      { uri: "b", width: 10, height: 10, pageIndex: 0, y0: 0 },
+    ];
+    // Imported in the order: page 2, then page 0.
+    const relabelled = relabelPages(sliced, [2, 0]);
+    expect(relabelled.map((entry) => entry.pageIndex)).toEqual([0, 1]);
+    expect(toReaderStrips(relabelled).map((entry) => entry.uri)).toEqual(["a", "b"]);
   });
 
   it("gives raw strips ids and page order", () => {

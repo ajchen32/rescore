@@ -156,6 +156,7 @@ export default function HomeScreen() {
     setStrips,
     setGarbage,
     setSelectedName,
+    setBookmarks,
     setErrorMessage,
     onBeginImport: beginImport,
   });
@@ -317,6 +318,10 @@ export default function HomeScreen() {
             reorderMode={pageImport.reorderMode}
             orderSequence={pageImport.orderSequence}
             selectedPageIndices={pageImport.selectedPageIndices}
+            bookmarkMode={pageImport.bookmarkMode}
+            bookmarkedPages={pageImport.bookmarkedPages}
+            onToggleBookmarkMode={pageImport.handleToggleBookmarkMode}
+            onToggleBookmark={pageImport.toggleBookmark}
             onToggleReorderMode={pageImport.handleToggleReorderMode}
             onTogglePage={pageImport.handleTogglePage}
             onSelectAll={pageImport.handleSelectAllPages}

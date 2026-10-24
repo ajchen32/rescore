@@ -1,11 +1,12 @@
 import { mergeWithAbove, moveToGarbage, replaceAt, type ReaderStrip } from "../corrections";
 import {
   addBookmark,
-  orderedBookmarks,
   bookmarkAnchor,
   bookmarkAtStrip,
   bookmarkBreaks,
   bookmarkStartIndices,
+  orderedBookmarks,
+  pageBookmarks,
   type Bookmark,
 } from "../bookmarks";
 
@@ -76,5 +77,16 @@ describe("bookmarks", () => {
   it("adds bookmarks in reading order", () => {
     const next = addBookmark([bookmarks[0], bookmarks[2]], bookmarks[1]);
     expect(next.map((entry) => entry.id)).toEqual(["one", "two", "three"]);
+  });
+
+  it("turns pages marked in the picker into bookmarks at their first system", () => {
+    // Imported pages 4, 1, 7 (picker indices) in that order; 1 and 7 marked, 9 not imported.
+    const marks = pageBookmarks([4, 1, 7], new Set([1, 7, 9]));
+    expect(marks.map((entry) => [entry.title, entry.start])).toEqual([
+      ["Bookmark 1", { pageIndex: 1, y0: 0 }],
+      ["Bookmark 2", { pageIndex: 2, y0: 0 }],
+    ]);
+    // Position 1 is page d's first system.
+    expect(bookmarkStartIndices(strips, [marks[0]]).get(marks[0].id)).toBe(3);
   });
 });

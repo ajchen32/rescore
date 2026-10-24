@@ -10,7 +10,8 @@ import {
   type ProgressEvent,
 } from "piano-pdf-parser-core";
 
-import { toReaderStrips, type ReaderStrip } from "../lib/corrections";
+import { pageBookmarks, type Bookmark } from "../lib/bookmarks";
+import { relabelPages, toReaderStrips, type ReaderStrip } from "../lib/corrections";
 import { errorFromUnknown } from "../lib/errors";
 import { buildImagePreviews, copyImagesToAppCache } from "../lib/images";
 import { copyPdfToAppCache, isPdfAsset, pickerCopyToCacheDirectory } from "../lib/pdf";
@@ -31,6 +32,7 @@ type PageImportOptions = {
   setStrips: Dispatch<SetStateAction<ReaderStrip[]>>;
   setGarbage: Dispatch<SetStateAction<ReaderStrip[]>>;
   setSelectedName: Dispatch<SetStateAction<string | null>>;
+  setBookmarks: Dispatch<SetStateAction<Bookmark[]>>;
   setErrorMessage: Dispatch<SetStateAction<string | null>>;
   // Clears the open score before a new import starts.
   onBeginImport: () => void;
@@ -46,6 +48,7 @@ export function usePageImport({
   setStrips,
   setGarbage,
   setSelectedName,
+  setBookmarks,
   setErrorMessage,
   onBeginImport,
 }: PageImportOptions) {
@@ -57,6 +60,9 @@ export function usePageImport({
   const [selectedPageIndices, setSelectedPageIndices] = useState<Set<number>>(new Set());
   const [reorderMode, setReorderMode] = useState(false);
   const [orderSequence, setOrderSequence] = useState<number[]>([]);
+  const [bookmarkMode, setBookmarkMode] = useState(false);
+  // Picker pages marked as where a piece starts.
+  const [bookmarkedPages, setBookmarkedPages] = useState<Set<number>>(new Set());
   const progressSubscription = useRef<ReturnType<typeof addProgressListener> | null>(null);
 
   const clearProgressSubscription = useCallback(() => {
@@ -75,15 +81,18 @@ export function usePageImport({
     setSelectedPageIndices(new Set());
     setReorderMode(false);
     setOrderSequence([]);
+    setBookmarkMode(false);
+    setBookmarkedPages(new Set());
   }, []);
 
   const showSlicedScore = useCallback(
-    (sliced: ReaderStrip[], slicedGarbage: ReaderStrip[]) => {
+    (sliced: ReaderStrip[], slicedGarbage: ReaderStrip[], bookmarks: Bookmark[]) => {
       setStrips(sliced);
       setGarbage(slicedGarbage);
+      setBookmarks(bookmarks);
       setPhase("done");
     },
-    [setGarbage, setPhase, setStrips]
+    [setBookmarks, setGarbage, setPhase, setStrips]
   );
 
   const clearPageSelection = useCallback(() => {
@@ -94,11 +103,13 @@ export function usePageImport({
     setSelectedPageIndices(new Set());
     setReorderMode(false);
     setOrderSequence([]);
+    setBookmarkMode(false);
+    setBookmarkedPages(new Set());
     setPhase("idle");
   }, [setPhase]);
 
   const processSelectedPages = useCallback(
-    async (cachedUri: string, pageIndices: number[]) => {
+    async (cachedUri: string, pageIndices: number[], bookmarks: Bookmark[]) => {
       clearProgressSubscription();
       progressSubscription.current = addProgressListener((event) => {
         setProgress(event);
@@ -114,7 +125,13 @@ export function usePageImport({
         setPendingImageUris([]);
         setPagePreviews([]);
         setSelectedPageIndices(new Set());
-        showSlicedScore(toReaderStrips(nextStrips), toReaderStrips(nextGarbage ?? []));
+        // Strips come back labelled with PDF page numbers; use import positions so a
+        // chosen page order survives (strips are sorted by page) and matches bookmarks.
+        showSlicedScore(
+          toReaderStrips(relabelPages(nextStrips, pageIndices)),
+          toReaderStrips(relabelPages(nextGarbage ?? [], pageIndices)),
+          bookmarks
+        );
       } catch (error) {
         setPhase("error");
         setErrorMessage(errorFromUnknown(error));
@@ -127,7 +144,7 @@ export function usePageImport({
   );
 
   const processSelectedImages = useCallback(
-    async (imageUris: string[]) => {
+    async (imageUris: string[], bookmarks: Bookmark[]) => {
       clearProgressSubscription();
       progressSubscription.current = addProgressListener((event) => {
         setProgress(event);
@@ -141,7 +158,8 @@ export function usePageImport({
         setPendingImageUris([]);
         setPagePreviews([]);
         setSelectedPageIndices(new Set());
-        showSlicedScore(toReaderStrips(nextStrips), toReaderStrips(nextGarbage ?? []));
+        // Photos are already labelled by import position.
+        showSlicedScore(toReaderStrips(nextStrips), toReaderStrips(nextGarbage ?? []), bookmarks);
       } catch (error) {
         setPhase("error");
         setErrorMessage(errorFromUnknown(error));
@@ -248,6 +266,18 @@ export function usePageImport({
     }
   }, [onBeginImport, reset, setErrorMessage, setPhase, setSelectedName]);
 
+  const toggleBookmark = useCallback((pageIndex: number) => {
+    setBookmarkedPages((current) => {
+      const next = new Set(current);
+      if (next.has(pageIndex)) {
+        next.delete(pageIndex);
+      } else {
+        next.add(pageIndex);
+      }
+      return next;
+    });
+  }, []);
+
   const handleToggleReorderMode = useCallback(() => {
     if (reorderMode) {
       const picked = new Set(orderSequence);
@@ -266,8 +296,17 @@ export function usePageImport({
       .filter((preview) => selectedPageIndices.has(preview.pageIndex))
       .map((preview) => preview.pageIndex);
     setOrderSequence(initialSequence);
+    setBookmarkMode(false);
     setReorderMode(true);
   }, [orderSequence, pagePreviews, reorderMode, selectedPageIndices]);
+
+  // Bookmarking and reordering both take over page taps, so one ends the other.
+  const handleToggleBookmarkMode = useCallback(() => {
+    if (!bookmarkMode && reorderMode) {
+      handleToggleReorderMode();
+    }
+    setBookmarkMode(!bookmarkMode);
+  }, [bookmarkMode, handleToggleReorderMode, reorderMode]);
 
   const handleTogglePage = useCallback(
     (pageIndex: number) => {
@@ -321,6 +360,7 @@ export function usePageImport({
     if (orderedPageIndices.length === 0) {
       return;
     }
+    const bookmarks = pageBookmarks(orderedPageIndices, bookmarkedPages);
 
     if (pageImportMode === "photos") {
       const imageUris = orderedPageIndices
@@ -329,7 +369,7 @@ export function usePageImport({
       if (imageUris.length === 0) {
         return;
       }
-      void processSelectedImages(imageUris);
+      void processSelectedImages(imageUris, bookmarks);
       return;
     }
 
@@ -337,8 +377,9 @@ export function usePageImport({
       return;
     }
 
-    void processSelectedPages(pendingPdfUri, orderedPageIndices);
+    void processSelectedPages(pendingPdfUri, orderedPageIndices, bookmarks);
   }, [
+    bookmarkedPages,
     orderSequence,
     pageImportMode,
     pagePreviews,
@@ -379,6 +420,10 @@ export function usePageImport({
     reorderMode,
     orderSequence,
     selectedPageIndices,
+    bookmarkMode,
+    bookmarkedPages,
+    handleToggleBookmarkMode,
+    toggleBookmark,
     reset,
     clearPageSelection,
     handlePickPdf,
