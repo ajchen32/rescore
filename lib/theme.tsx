@@ -27,33 +27,34 @@ export type ThemeColors = {
   destructiveBg: string;
 };
 
+// "Ink blue": cool greys, with a deep blue for primary actions and selection.
 const LIGHT_COLORS: ThemeColors = {
-  background: "#F2F1EE",
+  background: "#F1F3F6",
   surfaceElevated: "#FFFFFF",
-  text: "#232220",
-  textMuted: "#6B6862",
-  border: "#D8D5CE",
-  control: "#E4E2DD",
-  controlActive: "#232220",
-  controlActiveText: "#F2F1EE",
+  text: "#1D2330",
+  textMuted: "#5E6676",
+  border: "#D5DAE2",
+  control: "#E3E7ED",
+  controlActive: "#2C5592",
+  controlActiveText: "#FFFFFF",
   needsReview: "#B8863B",
   needsReviewBg: "#F3E6CE",
-  destructive: "#A6483F",
-  destructiveBg: "#F2E0DD",
+  destructive: "#B0453B",
+  destructiveBg: "#F5E1DE",
 };
 
 const DARK_COLORS: ThemeColors = {
-  background: "#1B1A18",
-  surfaceElevated: "#242220",
-  text: "#EDEBE6",
-  textMuted: "#9A968D",
-  border: "#3A3733",
-  control: "#2E2C29",
-  controlActive: "#EDEBE6",
-  controlActiveText: "#1B1A18",
+  background: "#14171D",
+  surfaceElevated: "#1D2129",
+  text: "#E6E9EF",
+  textMuted: "#8F97A6",
+  border: "#2E3440",
+  control: "#262B35",
+  controlActive: "#8DB2E8",
+  controlActiveText: "#0F1420",
   needsReview: "#D9A45C",
   needsReviewBg: "#3A2E1C",
-  destructive: "#C97A70",
+  destructive: "#E08A80",
   destructiveBg: "#3A2622",
 };
 

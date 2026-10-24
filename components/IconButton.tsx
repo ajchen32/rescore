@@ -20,7 +20,7 @@ export function IconButton({
   icon: Icon,
   label,
   size,
-  iconColor = "#232220",
+  iconColor = "#1D2330",
   variant = "md",
   ghost = false,
   className = "",
