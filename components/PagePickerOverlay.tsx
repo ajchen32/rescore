@@ -10,11 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getPdfPagePreview, type PagePreview } from "piano-pdf-parser-core";
-import { ArrowDownUp, CheckSquare, Moon, Play, Square, Sun, X } from "lucide-react-native";
+import { ArrowDownUp, CheckSquare, Square, X } from "lucide-react-native";
 
 import { IconButton } from "./IconButton";
 import { MusicImage } from "./MusicImage";
-import { useTheme } from "../lib/theme";
+import { Toolbar } from "./Toolbar";
+import { colorWithAlpha, useTheme } from "../lib/theme";
 
 type PageImportMode = "pdf" | "photos";
 
@@ -40,8 +41,11 @@ type ZoomState = {
   loading: boolean;
 };
 
-const GRID_COLUMNS = 3;
-const GRID_GAP = 10;
+const GRID_GAP = 8;
+const GRID_PADDING = 8;
+// Tiles stay roughly this wide, so landscape shows more columns.
+const TARGET_TILE_WIDTH = 140;
+const MIN_GRID_COLUMNS = 3;
 const LONG_PRESS_DELAY_MS = 250;
 const ZOOM_FADE_MS = 150;
 
@@ -60,11 +64,11 @@ export function PagePickerOverlay({
   onCancel,
   onProcess,
 }: PagePickerOverlayProps) {
-  const { darkMode, toggleDarkMode, colors } = useTheme();
+  const { darkMode, colors } = useTheme();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
-  const horizontalPadding = 16;
+  const gridColumns = Math.max(MIN_GRID_COLUMNS, Math.floor(viewportWidth / TARGET_TILE_WIDTH));
   const tileWidth =
-    (viewportWidth - horizontalPadding * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+    (viewportWidth - GRID_PADDING * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
   const selectedCount = reorderMode ? orderSequence.length : selectedPageIndices.size;
   const [zoomState, setZoomState] = useState<ZoomState | null>(null);
   const zoomRequestIdRef = useRef(0);
@@ -174,80 +178,57 @@ export function PagePickerOverlay({
   );
 
   const countLabel = reorderMode
-    ? `${selectedCount} in order`
-    : `${selectedCount} / ${previews.length}`;
+    ? `${selectedCount} in order · tap pages to number them`
+    : `${selectedCount} of ${previews.length} ${importMode === "photos" ? "photos" : "pages"}`;
+  const allSelected = selectedCount === previews.length;
+  const toolbarButton = { variant: "sm" as const, ghost: true, iconColor: colors.text };
 
   return (
     <View className="absolute inset-0 z-30" style={{ backgroundColor: colors.background }}>
       <SafeAreaView className="flex-1">
-        <View className="border-b px-4 py-3" style={{ borderBottomColor: colors.border }}>
-          <Text className="text-base font-semibold" style={{ color: colors.text }} numberOfLines={1}>
-            Pages
-          </Text>
-          <Text className="mt-1 text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
-            {fileName}
-          </Text>
-          <Text className="mt-1 text-xs" style={{ color: colors.textMuted }}>{countLabel}</Text>
-          <View className="mt-3 flex-row flex-wrap gap-2">
-            <IconButton
-              icon={darkMode ? Sun : Moon}
-              label={darkMode ? "Light mode" : "Dark mode"}
-              iconColor={colors.text}
-              onPress={toggleDarkMode}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <IconButton
-              icon={ArrowDownUp}
-              label={reorderMode ? "Done reordering" : "Reorder pages"}
-              iconColor={reorderMode ? colors.controlActiveText : colors.text}
-              onPress={onToggleReorderMode}
-              style={{
-                backgroundColor: reorderMode ? colors.controlActive : colors.control,
-                borderColor: colors.border,
-              }}
-            />
-            <IconButton
-              icon={CheckSquare}
-              label="Select all pages"
-              iconColor={colors.text}
-              onPress={onSelectAll}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <IconButton
-              icon={Square}
-              label="Clear selection"
-              iconColor={colors.text}
-              onPress={onClear}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <IconButton
-              icon={X}
-              label="Cancel"
-              iconColor={colors.text}
-              onPress={onCancel}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <IconButton
-              icon={Play}
-              label="Process selected pages"
-              iconColor={selectedCount === 0 ? colors.textMuted : colors.controlActiveText}
-              onPress={onProcess}
-              disabled={selectedCount === 0}
-              style={{
-                backgroundColor: selectedCount === 0 ? colors.border : colors.controlActive,
-                borderColor: colors.border,
-              }}
-            />
-          </View>
-        </View>
+        <Toolbar
+          title={fileName}
+          subtitle={countLabel}
+          left={<IconButton icon={X} label="Cancel import" onPress={onCancel} {...toolbarButton} />}
+          right={
+            <View className="flex-row items-center gap-1">
+              <IconButton
+                icon={allSelected ? Square : CheckSquare}
+                label={allSelected ? "Clear selection" : "Select all pages"}
+                onPress={allSelected ? onClear : onSelectAll}
+                {...toolbarButton}
+              />
+              <IconButton
+                icon={ArrowDownUp}
+                label={reorderMode ? "Done reordering" : "Reorder pages"}
+                onPress={onToggleReorderMode}
+                {...toolbarButton}
+                iconColor={reorderMode ? colors.controlActiveText : colors.text}
+                style={reorderMode ? { backgroundColor: colors.controlActive } : undefined}
+              />
+              <Pressable
+                onPress={onProcess}
+                disabled={selectedCount === 0}
+                accessibilityRole="button"
+                accessibilityLabel={`Import ${selectedCount} ${importMode === "photos" ? "photos" : "pages"}`}
+                className={`h-9 justify-center rounded-xl px-3 ${selectedCount === 0 ? "opacity-40" : ""}`}
+                style={{ backgroundColor: colors.controlActive }}
+              >
+                <Text className="text-sm font-semibold" style={{ color: colors.controlActiveText }}>
+                  Import
+                </Text>
+              </Pressable>
+            </View>
+          }
+        />
 
         <FlatList
           data={previews}
           keyExtractor={(item) => `page-${item.pageIndex}`}
-          numColumns={GRID_COLUMNS}
+          key={`grid-${gridColumns}`}
+          numColumns={gridColumns}
           contentContainerStyle={{
-            paddingHorizontal: horizontalPadding,
-            paddingVertical: 16,
+            padding: GRID_PADDING,
             gap: GRID_GAP,
           }}
           columnWrapperStyle={{ gap: GRID_GAP }}
@@ -313,13 +294,10 @@ export function PagePickerOverlay({
                 </View>
                 {caption !== null && (
                   <View
-                    className="border-t px-2 py-1"
-                    style={{
-                      borderTopColor: colors.border,
-                      backgroundColor: darkMode ? colors.background : colors.surfaceElevated,
-                    }}
+                    className="absolute bottom-1 left-1 rounded px-1.5 py-0.5"
+                    style={{ backgroundColor: colorWithAlpha(colors.surfaceElevated, 0.9) }}
                   >
-                    <Text className="text-center text-xs font-medium" style={{ color: colors.text }}>
+                    <Text className="text-xs font-medium" style={{ color: colors.text }}>
                       {caption}
                     </Text>
                   </View>

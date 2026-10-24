@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   GestureResponderEvent,
   LayoutChangeEvent,
   PanResponder,
@@ -11,10 +12,10 @@ import {
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   addProgressListener,
   getPdfPagePreviews,
@@ -25,11 +26,14 @@ import {
 } from "piano-pdf-parser-core";
 
 import { GarbageOverlay } from "../components/GarbageOverlay";
+import { LibraryList } from "../components/LibraryList";
+import { Menu } from "../components/Menu";
 import { PagePickerOverlay } from "../components/PagePickerOverlay";
+import { ReaderBar } from "../components/ReaderBar";
 import { defaultSaveTitle } from "../components/SaveNameOverlay";
 import { SplitOverlay } from "../components/SplitOverlay";
 import { StripColumnView } from "../components/StripColumnView";
-import { subscribeScoreDeleted } from "../lib/discardedScores";
+import { Toolbar } from "../components/Toolbar";
 import { errorFromUnknown } from "../lib/errors";
 import {
   chunkStrips,
@@ -47,8 +51,6 @@ import {
   type ReaderStrip,
 } from "../lib/corrections";
 import {
-  deleteScore,
-  formatScoreDate,
   loadLibrary,
   loadScore,
   resolveLandscapeVisibleCount,
@@ -56,25 +58,13 @@ import {
   saveScore,
   savedStripToReaderStrip,
   uniqueScoreTitle,
-  type SavedScore,
 } from "../lib/library";
 import { buildImagePreviews, copyImagesToAppCache } from "../lib/images";
 import { copyPdfToAppCache, isPdfAsset, pickerCopyToCacheDirectory } from "../lib/pdf";
 import { IconButton } from "../components/IconButton";
 import { useTheme } from "../lib/theme";
 import { isSplitAvailable, SPLIT_REBUILD_MESSAGE, splitStripAtRatios } from "../lib/splitStrip";
-import {
-  BookOpen,
-  Check,
-  FileText,
-  Images,
-  Minus,
-  Moon,
-  Pencil,
-  Plus,
-  Sun,
-  Trash2,
-} from "lucide-react-native";
+import { FileText, Images, Moon, Plus, Sun } from "lucide-react-native";
 
 type AppPhase =
   | "idle"
@@ -97,6 +87,10 @@ type ReaderLayoutSnapshot = {
 const CHROME_SWIPE_THRESHOLD = 36;
 const SWIPE_BACK_THRESHOLD = 36;
 const AUTOSAVE_DEBOUNCE_MS = 600;
+const BAR_AUTO_HIDE_MS = 4000;
+const TOOLBAR_HEIGHT = 48;
+const MENU_GAP = 4;
+const SAVE_WAIT_POLL_MS = 50;
 
 type PersistSnapshot = {
   stripsJson: string;
@@ -135,10 +129,8 @@ function persistSnapshotsEqual(a: PersistSnapshot, b: PersistSnapshot): boolean 
 export default function HomeScreen() {
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const isLandscape = viewportWidth > viewportHeight;
-  const { scoreId, deletedScoreId } = useLocalSearchParams<{
-    scoreId?: string;
-    deletedScoreId?: string;
-  }>();
+  const { scoreId } = useLocalSearchParams<{ scoreId?: string }>();
+  const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<AppPhase>("idle");
   const [strips, setStrips] = useState<ReaderStrip[]>([]);
   const [garbage, setGarbage] = useState<ReaderStrip[]>([]);
@@ -155,8 +147,13 @@ export default function HomeScreen() {
   const [splitTargetIndex, setSplitTargetIndex] = useState<number | null>(null);
   const [savedScoreId, setSavedScoreId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [chromeVisible, setChromeVisible] = useState(true);
-  const [recents, setRecents] = useState<SavedScore[]>([]);
+  // The reader opens full screen; the floating bar shows on a vertical swipe or
+  // the corner handle, and hides itself again.
+  const [chromeVisible, setChromeVisible] = useState(false);
+  const [barMenuOpen, setBarMenuOpen] = useState(false);
+  const [barActivity, setBarActivity] = useState(0);
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const [libraryVersion, setLibraryVersion] = useState(0);
   const [pageImportMode, setPageImportMode] = useState<PageImportMode>("pdf");
   const [pendingPdfUri, setPendingPdfUri] = useState<string | null>(null);
   const [pendingImageUris, setPendingImageUris] = useState<string[]>([]);
@@ -174,7 +171,6 @@ export default function HomeScreen() {
   const savePendingRef = useRef(false);
   const lastSavedSnapshotRef = useRef<PersistSnapshot | null>(null);
   const saveEpochRef = useRef(0);
-  const discardedScoreIdsRef = useRef(new Set<string>());
   const stripsRef = useRef(strips);
   const garbageRef = useRef(garbage);
   const portraitVisibleCountRef = useRef(portraitVisibleCount);
@@ -217,7 +213,7 @@ export default function HomeScreen() {
         isActive: index === clampedColumnIndex,
       }));
   }, [clampedColumnIndex, columns]);
-  const slotHeight = stripSlotHeight(readerHeight, activeVisibleCount, chromeVisible);
+  const slotHeight = stripSlotHeight(readerHeight, activeVisibleCount);
   const splitTarget = splitTargetIndex !== null ? strips[splitTargetIndex] : null;
   const splitAvailable = isSplitAvailable();
   const showReader = strips.length > 0;
@@ -248,8 +244,13 @@ export default function HomeScreen() {
     setColumnIndex((current) => Math.max(current - 1, 0));
   }, []);
 
+  const bumpBar = useCallback(() => {
+    setBarActivity((count) => count + 1);
+  }, []);
+
   const handleReaderPress = useCallback(
     (event: GestureResponderEvent) => {
+      bumpBar();
       const tapX = event.nativeEvent.locationX;
       if (tapX < viewportWidth / 3) {
         goToPreviousColumn();
@@ -257,7 +258,7 @@ export default function HomeScreen() {
       }
       goToNextColumn();
     },
-    [goToNextColumn, goToPreviousColumn, viewportWidth]
+    [bumpBar, goToNextColumn, goToPreviousColumn, viewportWidth]
   );
 
   const goToPreviousColumnRef = useRef(goToPreviousColumn);
@@ -323,17 +324,6 @@ export default function HomeScreen() {
       }
     };
   }, [clearProgressSubscription]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (strips.length > 0) {
-        return;
-      }
-      void loadLibrary().then((library) => {
-        setRecents(library.scores.slice(0, 5));
-      });
-    }, [strips.length])
-  );
 
   useEffect(() => {
     const requestedScoreId = typeof scoreId === "string" ? scoreId : undefined;
@@ -461,7 +451,8 @@ export default function HomeScreen() {
     setEditing(false);
     setSplitTargetIndex(null);
     setShowGarbage(false);
-    setChromeVisible(true);
+    setChromeVisible(false);
+    setBarMenuOpen(false);
   }, []);
 
   const clearPageSelection = useCallback(() => {
@@ -477,72 +468,8 @@ export default function HomeScreen() {
 
   const openSavedScore = useCallback((id: string) => {
     loadedScoreIdRef.current = null;
-    router.replace({
-      pathname: "/",
-      params: { scoreId: id },
-    });
+    router.setParams({ scoreId: id });
   }, []);
-
-  const discardOpenScore = useCallback(() => {
-    const openId = savedScoreIdRef.current;
-    if (openId) {
-      discardedScoreIdsRef.current.add(openId);
-    }
-    saveEpochRef.current += 1;
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
-    savePendingRef.current = false;
-    lastSavedSnapshotRef.current = null;
-    loadedScoreIdRef.current = null;
-    resetResults();
-    setSavedScoreId(null);
-    setPhase("idle");
-    setSaveStatus("idle");
-    router.setParams({ scoreId: undefined, deletedScoreId: undefined });
-  }, [resetResults]);
-
-  useEffect(() => {
-    if (!deletedScoreId || savedScoreIdRef.current !== deletedScoreId) {
-      return;
-    }
-    discardOpenScore();
-  }, [deletedScoreId, discardOpenScore]);
-
-  useEffect(() => {
-    return subscribeScoreDeleted((id) => {
-      if (savedScoreIdRef.current === id) {
-        discardOpenScore();
-      }
-    });
-  }, [discardOpenScore]);
-
-  useFocusEffect(
-    useCallback(() => {
-      const openId = savedScoreIdRef.current;
-      if (!openId || stripsRef.current.length === 0) {
-        return;
-      }
-
-      let cancelled = false;
-      void loadScore(openId)
-        .then((score) => {
-          if (!cancelled) {
-            setSelectedName(score.title);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            discardOpenScore();
-          }
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [discardOpenScore])
-  );
 
   const persistScore = useCallback(async () => {
     if (stripsRef.current.length === 0) {
@@ -608,15 +535,8 @@ export default function HomeScreen() {
           landscapeVisibleCount: currentLandscapeVisibleCount,
         });
 
+        // The reader was closed while this save ran; don't repopulate it.
         if (epoch !== saveEpochRef.current) {
-          if (currentSavedScoreId && discardedScoreIdsRef.current.has(currentSavedScoreId)) {
-            discardedScoreIdsRef.current.delete(currentSavedScoreId);
-            try {
-              await deleteScore(result.id);
-            } catch {
-              // The library delete already removed it, or a later save cleaned it up.
-            }
-          }
           break;
         }
 
@@ -715,6 +635,60 @@ export default function HomeScreen() {
     setColumnIndex(0);
   }, []);
 
+  // Back to the library. Saves first: an edit made just before leaving may still
+  // be waiting on the autosave debounce, which closing would otherwise cancel.
+  const closeReader = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    while (saveInFlightRef.current) {
+      await new Promise((resolve) => setTimeout(resolve, SAVE_WAIT_POLL_MS));
+    }
+    await persistScore();
+
+    saveEpochRef.current += 1;
+    lastSavedSnapshotRef.current = null;
+    loadedScoreIdRef.current = null;
+    resetResults();
+    setSavedScoreId(null);
+    setPhase("idle");
+    setSaveStatus("idle");
+    router.setParams({ scoreId: undefined });
+    setLibraryVersion((version) => version + 1);
+  }, [persistScore, resetResults]);
+
+  useEffect(() => {
+    if (!showReader || !chromeVisible || editing || barMenuOpen || overlayOpen) {
+      return undefined;
+    }
+    const timer = setTimeout(() => setChromeVisible(false), BAR_AUTO_HIDE_MS);
+    return () => clearTimeout(timer);
+  }, [barActivity, barMenuOpen, chromeVisible, editing, overlayOpen, showReader]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (phase === "choosing") {
+        clearPageSelection();
+        return true;
+      }
+      if (splitTargetIndex !== null) {
+        setSplitTargetIndex(null);
+        return true;
+      }
+      if (showGarbage) {
+        setShowGarbage(false);
+        return true;
+      }
+      if (showReader) {
+        void closeReader();
+        return true;
+      }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [clearPageSelection, closeReader, phase, showGarbage, showReader, splitTargetIndex]);
+
   const processSelectedPages = useCallback(
     async (cachedUri: string, pageIndices: number[]) => {
       clearProgressSubscription();
@@ -797,7 +771,7 @@ export default function HomeScreen() {
     setSavedScoreId(null);
     setSaveStatus("idle");
     resetResults();
-    router.setParams({ scoreId: undefined, deletedScoreId: undefined });
+    router.setParams({ scoreId: undefined });
     setColumnIndex(0);
 
     setPageImportMode("pdf");
@@ -848,7 +822,7 @@ export default function HomeScreen() {
     setSavedScoreId(null);
     setSaveStatus("idle");
     resetResults();
-    router.setParams({ scoreId: undefined, deletedScoreId: undefined });
+    router.setParams({ scoreId: undefined });
     setColumnIndex(0);
 
     const firstAsset = result.assets[0];
@@ -1059,231 +1033,50 @@ export default function HomeScreen() {
     [splitTargetIndex, strips]
   );
 
-  const safeAreaEdges = ["top", "bottom"] as const;
+  const busy = phase === "copying" || phase === "loadingPreviews" || phase === "processing";
+  const busyMessage =
+    phase === "copying"
+      ? pageImportMode === "photos"
+        ? "Copying photos…"
+        : "Copying PDF…"
+      : phase === "loadingPreviews"
+        ? "Loading pages…"
+        : progress
+          ? `Slicing ${pageImportMode === "photos" ? "image" : "page"} ${progress.pageIndex + 1} of ${progress.pageCount}…`
+          : "Slicing…";
+  const readerBackground = darkMode ? "#000000" : "#FFFFFF";
+  const importButton = (
+    <IconButton
+      icon={Plus}
+      label="Import"
+      variant="sm"
+      onPress={() => setImportMenuOpen(true)}
+      disabled={pickBusy}
+      iconColor={colors.controlActiveText}
+      style={{ backgroundColor: colors.controlActive, borderColor: colors.controlActive }}
+    />
+  );
 
   return (
     <View
       className="flex-1"
-      style={{
-        backgroundColor: showReader && darkMode ? "#000000" : colors.background,
-      }}
+      style={{ backgroundColor: showReader ? readerBackground : colors.background }}
     >
-    <SafeAreaView
-      className="flex-1"
-      style={{
-        backgroundColor: showReader && darkMode ? "#000000" : colors.background,
-      }}
-      edges={safeAreaEdges}
-    >
-      <StatusBar hidden={showReader && !chromeVisible} />
-      {(!showReader || chromeVisible) && (
-      <View
-        className="border-b px-4 py-3"
-        style={{ backgroundColor: colors.surfaceElevated, borderBottomColor: colors.border }}
+      <SafeAreaView
+        className="flex-1"
+        // The reader runs edge to edge at the top (its bar handles the inset).
+        edges={showReader ? ["bottom", "left", "right"] : ["top", "bottom", "left", "right"]}
       >
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            onPress={handlePickPdf}
-            disabled={pickBusy}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: pickBusy ? colors.border : colors.controlActive,
-            }}
-          >
-            <FileText size={20} color={colors.controlActiveText} strokeWidth={2} />
-            <Text className="text-base font-semibold" style={{ color: colors.controlActiveText }}>
-              {pickBusy ? "…" : "PDF"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void handlePickPhotos()}
-            disabled={pickBusy}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3"
-            style={{ backgroundColor: pickBusy ? colors.border : colors.controlActive }}
-          >
-            <Images size={20} color={colors.controlActiveText} strokeWidth={2} />
-            <Text className="text-base font-semibold" style={{ color: colors.controlActiveText }}>
-              {pickBusy ? "…" : "Photos"}
-            </Text>
-          </Pressable>
-          <IconButton
-            icon={BookOpen}
-            label="Library"
-            iconColor={colors.text}
-            onPress={() => router.push("/library")}
-            disabled={pickBusy}
-            style={{ backgroundColor: colors.control, borderColor: colors.border }}
-          />
-          <IconButton
-            icon={darkMode ? Sun : Moon}
-            label={darkMode ? "Light mode" : "Dark mode"}
-            iconColor={colors.text}
-            onPress={toggleDarkMode}
-            disabled={pickBusy}
-            style={{ backgroundColor: colors.control, borderColor: colors.border }}
-          />
-        </View>
-        {selectedName && (strips.length > 0 || phase !== "idle") && (
-          <Text className="mt-2 text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
-            {selectedName}
-          </Text>
-        )}
-      </View>
-      )}
+        {/* Reading is full screen: the clock would sit on top of the music. */}
+        <StatusBar hidden={showReader} />
 
-      {(phase === "copying" || phase === "loadingPreviews" || phase === "processing") && (
-        <View className="items-center px-4 py-6">
-          <ActivityIndicator size="large" color={colors.text} />
-          <Text className="mt-3 text-base" style={{ color: colors.text }}>
-            {phase === "copying"
-              ? pageImportMode === "photos"
-                ? "Copying photos into app cache…"
-                : "Copying PDF into app cache…"
-              : phase === "loadingPreviews"
-                ? pageImportMode === "photos"
-                  ? "Loading photo previews…"
-                  : "Loading page previews…"
-                : progress
-                  ? pageImportMode === "photos"
-                    ? `Slicing image ${progress.pageIndex + 1} of ${progress.pageCount}…`
-                    : `Slicing page ${progress.pageIndex + 1} of ${progress.pageCount}…`
-                  : pageImportMode === "photos"
-                    ? "Slicing photos…"
-                    : "Slicing PDF…"}
-          </Text>
-        </View>
-      )}
-
-      {phase === "choosing" &&
-        pagePreviews.length > 0 &&
-        selectedName &&
-        (pageImportMode === "pdf" ? pendingPdfUri : pendingImageUris.length > 0) && (
-        <PagePickerOverlay
-          importMode={pageImportMode}
-          pdfUri={pageImportMode === "pdf" ? pendingPdfUri ?? undefined : undefined}
-          fileName={selectedName}
-          previews={pagePreviews}
-          reorderMode={reorderMode}
-          orderSequence={orderSequence}
-          selectedPageIndices={selectedPageIndices}
-          onToggleReorderMode={handleToggleReorderMode}
-          onTogglePage={handleTogglePage}
-          onSelectAll={handleSelectAllPages}
-          onClear={handleClearPageSelection}
-          onCancel={clearPageSelection}
-          onProcess={handleProcessSelectedPages}
-        />
-      )}
-
-      {errorMessage && (
-        <View
-          className="mx-4 mt-4 rounded-xl border px-4 py-3"
-          style={{ borderColor: colors.border, backgroundColor: colors.surfaceElevated }}
-        >
-          <Text className="text-sm font-medium" style={{ color: colors.text }}>
-            {errorMessage}
-          </Text>
-        </View>
-      )}
-
-      {showReader && (
-        <View className="flex-1">
-          {chromeVisible && (
-          <View
-            className="border-b px-4 py-3"
-            style={{ backgroundColor: colors.surfaceElevated, borderBottomColor: colors.border }}
-          >
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-1">
-                {saveStatus !== "idle" && (
-                  <Text
-                    className="min-w-14 px-1 text-sm"
-                    style={{ color: colors.textMuted }}
-                    accessibilityLiveRegion="polite"
-                  >
-                    {saveStatus === "saving" ? "Saving" : "Saved"}
-                  </Text>
-                )}
-                <View className="relative">
-                  <IconButton
-                    icon={Trash2}
-                    label={`Garbage, ${garbage.length} items`}
-                    iconColor={colors.text}
-                    onPress={() => setShowGarbage(true)}
-                    style={{ backgroundColor: colors.control, borderColor: colors.border }}
-                  />
-                  {garbage.length > 0 && (
-                    <View
-                      className="absolute -right-1 -top-1 min-h-5 min-w-5 items-center justify-center rounded-full px-1"
-                      style={{ backgroundColor: colors.controlActive }}
-                    >
-                      <Text className="text-[10px] font-bold" style={{ color: colors.controlActiveText }}>
-                        {garbage.length}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                {editing ? (
-                  <IconButton
-                    icon={Check}
-                    label="Done editing"
-                    iconColor={colors.controlActiveText}
-                    onPress={() => {
-                      setEditing(false);
-                      setSplitTargetIndex(null);
-                    }}
-                    style={{ backgroundColor: colors.controlActive, borderColor: colors.border }}
-                  />
-                ) : (
-                  <IconButton
-                    icon={Pencil}
-                    label="Correct systems"
-                    iconColor={colors.text}
-                    onPress={() => setEditing(true)}
-                    style={{ backgroundColor: colors.control, borderColor: colors.border }}
-                  />
-                )}
-              </View>
-              <View className="flex-row items-center gap-2">
-                <IconButton
-                  icon={Minus}
-                  label="Show fewer systems"
-                  iconColor={colors.text}
-                  onPress={decreaseVisibleCount}
-                  disabled={activeVisibleCount <= MIN_VISIBLE_COUNT}
-                  className="h-9 w-9 min-h-9 min-w-9"
-                  style={{ backgroundColor: colors.control, borderColor: colors.border }}
-                />
-                <Text
-                  className="min-w-6 text-center text-sm font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  {activeVisibleCount}
-                </Text>
-                <IconButton
-                  icon={Plus}
-                  label="Show more systems"
-                  iconColor={colors.text}
-                  onPress={increaseVisibleCount}
-                  disabled={activeVisibleCount >= MAX_VISIBLE_COUNT}
-                  className="h-9 w-9 min-h-9 min-w-9"
-                  style={{ backgroundColor: colors.control, borderColor: colors.border }}
-                />
-              </View>
-            </View>
-          </View>
-          )}
-
+        {showReader ? (
           <View
             className="relative flex-1"
             onLayout={handleReaderLayout}
             {...readerPanResponder.panHandlers}
           >
-            <Pressable
-              style={{ flex: 1 }}
-              disabled={overlayOpen}
-              onPress={handleReaderPress}
-            >
+            <Pressable style={{ flex: 1 }} disabled={overlayOpen} onPress={handleReaderPress}>
               <View style={{ flex: 1, position: "relative" }}>
                 {preloadedColumns.map(({ column, isActive }) => (
                   <View
@@ -1300,11 +1093,10 @@ export default function HomeScreen() {
                   >
                     <StripColumnView
                       column={column}
-                      columnWidth={viewportWidth}
+                      columnWidth={viewportWidth - insets.left - insets.right}
                       readerHeight={readerHeight}
                       slotHeight={slotHeight}
                       allStrips={strips}
-                      showSeparators={chromeVisible}
                       editing={editing && isActive}
                       splitAvailable={splitAvailable}
                       inverted={darkMode}
@@ -1316,6 +1108,37 @@ export default function HomeScreen() {
                 ))}
               </View>
             </Pressable>
+
+            {!overlayOpen && (
+              <ReaderBar
+                visible={chromeVisible}
+                title={selectedName ?? ""}
+                saveStatus={saveStatus}
+                visibleCount={activeVisibleCount}
+                canDecrease={activeVisibleCount > MIN_VISIBLE_COUNT}
+                canIncrease={activeVisibleCount < MAX_VISIBLE_COUNT}
+                editing={editing}
+                garbageCount={garbage.length}
+                onShow={() => {
+                  setChromeVisible(true);
+                  bumpBar();
+                }}
+                onBack={() => void closeReader()}
+                onDecrease={decreaseVisibleCount}
+                onIncrease={increaseVisibleCount}
+                onToggleEdit={() => {
+                  if (editing) {
+                    setEditing(false);
+                    setSplitTargetIndex(null);
+                  } else {
+                    setEditing(true);
+                  }
+                }}
+                onOpenGarbage={() => setShowGarbage(true)}
+                onInteraction={bumpBar}
+                onMenuOpenChange={setBarMenuOpen}
+              />
+            )}
 
             {splitTarget && (
               <SplitOverlay
@@ -1335,47 +1158,113 @@ export default function HomeScreen() {
               />
             )}
           </View>
-        </View>
-      )}
-
-      {phase === "idle" && strips.length === 0 && !errorMessage && (
-        <View className="flex-1 px-4 py-6">
-          {recents.length > 0 && (
-            <View
-              className="mb-6 rounded-xl border"
-              style={{ borderColor: colors.border, backgroundColor: colors.surfaceElevated }}
-            >
-              <Text
-                className="border-b px-4 py-3 text-sm font-semibold"
-                style={{ color: colors.text, borderBottomColor: colors.border }}
+        ) : (
+          <View className="flex-1">
+            <Toolbar
+              title="Rescore"
+              right={
+                <View className="flex-row items-center gap-1">
+                  <IconButton
+                    icon={darkMode ? Sun : Moon}
+                    label={darkMode ? "Light mode" : "Dark mode"}
+                    variant="sm"
+                    ghost
+                    iconColor={colors.text}
+                    onPress={toggleDarkMode}
+                  />
+                  {importButton}
+                </View>
+              }
+            />
+            <LibraryList
+              refreshKey={libraryVersion}
+              onOpen={openSavedScore}
+              onError={setErrorMessage}
+              emptyAction={
+                <View className="flex-row gap-2">
+                  <IconButton
+                    icon={FileText}
+                    label="Import a PDF"
+                    onPress={() => void handlePickPdf()}
+                    disabled={pickBusy}
+                    iconColor={colors.controlActiveText}
+                    style={{ backgroundColor: colors.controlActive, borderColor: colors.controlActive }}
+                  />
+                  <IconButton
+                    icon={Images}
+                    label="Import photos"
+                    onPress={() => void handlePickPhotos()}
+                    disabled={pickBusy}
+                    iconColor={colors.text}
+                    style={{ backgroundColor: colors.control, borderColor: colors.border }}
+                  />
+                </View>
+              }
+            />
+            {busy && (
+              <View
+                className="absolute inset-0 items-center justify-center"
+                style={{ backgroundColor: colors.background }}
               >
-                Recent
-              </Text>
-              {recents.map((score) => (
-                <Pressable
-                  key={score.id}
-                  onPress={() => openSavedScore(score.id)}
-                  className="border-b px-4 py-3 last:border-b-0"
-                  style={{ borderBottomColor: colors.border }}
-                >
-                  <Text className="text-base font-medium" style={{ color: colors.text }} numberOfLines={1}>
-                    {score.title}
-                  </Text>
-                  <Text className="mt-1 text-sm" style={{ color: colors.textMuted }}>
-                    {formatScoreDate(score.createdAt)} · {score.stripCount}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-          <View className="flex-1 items-center justify-center px-2">
-            <Text className="text-center text-base" style={{ color: colors.textMuted }}>
-              Pick a PDF or photos to start.
-            </Text>
+                <ActivityIndicator size="large" color={colors.text} />
+                <Text className="mt-3 text-base" style={{ color: colors.text }}>
+                  {busyMessage}
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
+        )}
+
+        {phase === "choosing" &&
+          pagePreviews.length > 0 &&
+          selectedName &&
+          (pageImportMode === "pdf" ? pendingPdfUri : pendingImageUris.length > 0) && (
+          <PagePickerOverlay
+            importMode={pageImportMode}
+            pdfUri={pageImportMode === "pdf" ? pendingPdfUri ?? undefined : undefined}
+            fileName={selectedName}
+            previews={pagePreviews}
+            reorderMode={reorderMode}
+            orderSequence={orderSequence}
+            selectedPageIndices={selectedPageIndices}
+            onToggleReorderMode={handleToggleReorderMode}
+            onTogglePage={handleTogglePage}
+            onSelectAll={handleSelectAllPages}
+            onClear={handleClearPageSelection}
+            onCancel={clearPageSelection}
+            onProcess={handleProcessSelectedPages}
+          />
+        )}
+
+        {errorMessage && (
+          <Pressable
+            onPress={() => setErrorMessage(null)}
+            accessibilityRole="button"
+            accessibilityHint="Dismiss"
+            className="absolute bottom-4 left-4 right-4 z-40 rounded-xl border px-4 py-3"
+            style={{ borderColor: colors.border, backgroundColor: colors.surfaceElevated, elevation: 6 }}
+          >
+            <Text className="text-sm font-medium" style={{ color: colors.text }}>
+              {errorMessage}
+            </Text>
+            <Text className="mt-0.5 text-xs" style={{ color: colors.textMuted }}>
+              Tap to dismiss
+            </Text>
+          </Pressable>
+        )}
+      </SafeAreaView>
+
+      {importMenuOpen && (
+        <Menu
+          top={insets.top + TOOLBAR_HEIGHT + MENU_GAP}
+          right={insets.right + 8}
+          onClose={() => setImportMenuOpen(false)}
+          items={[
+            { label: "PDF", icon: FileText, onPress: () => void handlePickPdf() },
+            { label: "Photos", icon: Images, onPress: () => void handlePickPhotos() },
+          ]}
+        />
       )}
-    </SafeAreaView>
     </View>
   );
 }

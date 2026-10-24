@@ -108,13 +108,13 @@ export function SaveNameOverlay({
     <View
       ref={avoidKeyboard === "overlap" ? cardRef : undefined}
       onLayout={avoidKeyboard === "overlap" ? updateOverlapShift : undefined}
-      className="w-full max-w-md rounded-2xl border p-5"
+      className="w-full max-w-md rounded-2xl border p-4"
       style={[
         { borderColor: colors.border, backgroundColor: colors.surfaceElevated },
         avoidKeyboard === "overlap" ? { transform: [{ translateY: -cardShiftY }] } : null,
       ]}
     >
-      <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+      <Text className="text-base font-semibold" style={{ color: colors.text }}>
         {heading}
       </Text>
 
@@ -132,7 +132,7 @@ export function SaveNameOverlay({
             onConfirm(trimmed);
           }
         }}
-        className="mt-4 rounded-xl border px-4 py-3 text-base"
+        className="mt-3 rounded-lg border px-3 py-2 text-base"
         style={{
           borderColor: colors.border,
           backgroundColor: colors.background,
@@ -142,7 +142,7 @@ export function SaveNameOverlay({
         placeholderTextColor={colors.textMuted}
       />
 
-      <View className="mt-5 flex-row justify-end gap-2">
+      <View className="mt-4 flex-row justify-end gap-2">
         <IconButton
           icon={X}
           label={cancelAccessibilityLabel}
@@ -177,7 +177,7 @@ export function SaveNameOverlay({
 
   if (avoidKeyboard === "overlap") {
     return (
-      <View style={[styles.overlay, { backgroundColor: colors.background }]}>
+      <View style={[styles.overlay, styles.backdrop]}>
         <View style={styles.centered}>{card}</View>
       </View>
     );
@@ -186,7 +186,7 @@ export function SaveNameOverlay({
   return (
     <KeyboardAvoidingView
       behavior="padding"
-      style={[styles.overlay, { backgroundColor: colors.background }]}
+      style={[styles.overlay, styles.backdrop]}
     >
       <View style={styles.centered}>{card}</View>
     </KeyboardAvoidingView>
@@ -197,6 +197,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFill,
     zIndex: 20,
+  },
+  // Dimmed, so the dialog reads as a dialog over the list it came from.
+  backdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
   },
   centered: {
     flex: 1,

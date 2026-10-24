@@ -64,32 +64,35 @@ export function StripRow({
     >
       {editing && (
         <View
-          className="absolute left-0 right-0 top-0 z-10 flex-row items-center justify-between px-1 py-1"
+          className="absolute right-2 top-2 z-10 flex-row items-center gap-1 rounded-xl p-1"
           style={{ backgroundColor: colorWithAlpha(colors.text, 0.85) }}
         >
           <IconButton
             icon={ArrowUp}
             label="Merge with system above"
+            variant="sm"
+            ghost
             iconColor={globalIndex === 0 ? colors.textMuted : colors.background}
             onPress={onMergeUp}
             disabled={globalIndex === 0}
-            className="min-h-10 min-w-10"
           />
           <IconButton
             icon={Scissors}
             label="Split system"
+            variant="sm"
+            ghost
             iconColor={splitAvailable ? colors.background : colors.textMuted}
             onPress={onSplit}
             disabled={!splitAvailable}
-            className="min-h-10 min-w-10"
           />
           <IconButton
             icon={Trash2}
             label="Delete system"
+            variant="sm"
+            ghost
             iconColor={canDelete ? colors.destructive : colors.textMuted}
             onPress={onDelete}
             disabled={!canDelete}
-            className="min-h-10 min-w-10"
           />
         </View>
       )}

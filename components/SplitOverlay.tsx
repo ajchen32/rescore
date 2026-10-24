@@ -9,10 +9,12 @@ import {
   View,
 } from "react-native";
 import { Minus, Plus, Scissors, Trash2, X } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { flattenParts, type ReaderStrip } from "../lib/corrections";
 import { IconButton } from "./IconButton";
 import { ClippedStripImage, StackedStripImages } from "./StripStack";
+import { Toolbar } from "./Toolbar";
 import { colorWithAlpha, useTheme } from "../lib/theme";
 import {
   getRememberedOverlapRatio,
@@ -32,9 +34,7 @@ const MAX_CUTS = 8;
 const MIN_GAP = 0.04;
 const MIN_ADD_GAP = 0.08;
 const SELECT_THRESHOLD_PX = 24;
-const TITLE_MARGIN = 12;
-const BUTTON_MARGIN = 16;
-const VERTICAL_PADDING = 24;
+const PREVIEW_MARGIN = 16;
 const MIN_PREVIEW_HEIGHT = 80;
 
 type SplitOverlayProps = {
@@ -104,6 +104,7 @@ export function SplitOverlay({
 }: SplitOverlayProps) {
   const { colors } = useTheme();
   const { width: viewportWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const parts = flattenParts(strip);
   const stacked = parts.length > 1;
   const [ratios, setRatios] = useState<number[]>([0.5]);
@@ -112,8 +113,6 @@ export function SplitOverlay({
   const [working, setWorking] = useState(false);
   const [containerHeight, setContainerHeight] = useState(0);
   const [containerWidth, setContainerWidth] = useState(viewportWidth);
-  const [titleHeight, setTitleHeight] = useState(0);
-  const [buttonsHeight, setButtonsHeight] = useState(0);
   const [pixelSize, setPixelSize] = useState<{ width: number; height: number } | null>(null);
   const ratiosRef = useRef<number[]>([0.5]);
   const selectedIndexRef = useRef(0);
@@ -166,34 +165,23 @@ export function SplitOverlay({
     const sourceHeight = pixelSize?.height ?? strip.height;
     const aspect = sourceWidth > 0 && sourceHeight > 0 ? sourceWidth / sourceHeight : 4.2;
     const naturalHeight = previewWidth / aspect;
-    const chrome =
-      titleHeight + buttonsHeight + TITLE_MARGIN + BUTTON_MARGIN + VERTICAL_PADDING;
-    const remainingHeight = containerHeight > chrome ? containerHeight - chrome : 0;
+    // The container is everything above the toolbar; keep a margin around the preview.
+    const remainingHeight = containerHeight > PREVIEW_MARGIN ? containerHeight - PREVIEW_MARGIN : 0;
     const maxHeight = Math.max(MIN_PREVIEW_HEIGHT, remainingHeight);
     return Math.min(naturalHeight, maxHeight);
   }, [
-    buttonsHeight,
     containerHeight,
     previewWidth,
     pixelSize?.height,
     pixelSize?.width,
     strip.height,
     strip.width,
-    titleHeight,
   ]);
 
   const handleContainerLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setContainerWidth(width);
     setContainerHeight(height);
-  }, []);
-
-  const handleTitleLayout = useCallback((event: LayoutChangeEvent) => {
-    setTitleHeight(event.nativeEvent.layout.height);
-  }, []);
-
-  const handleButtonsLayout = useCallback((event: LayoutChangeEvent) => {
-    setButtonsHeight(event.nativeEvent.layout.height);
   }, []);
 
   const canAddCut = ratios.length < MAX_CUTS && largestGapMidpoint(ratios) !== null;
@@ -300,17 +288,15 @@ export function SplitOverlay({
     }
   };
 
+  const toolbarButton = { variant: "sm" as const, ghost: true, iconColor: colors.text };
+
   return (
     <View className="absolute inset-0 z-20 overflow-hidden" style={{ backgroundColor: colors.background }}>
-      <View className="flex-1 px-4 py-3" onLayout={handleContainerLayout}>
-        <Text
-          onLayout={handleTitleLayout}
-          className="mb-3 text-center text-base font-medium"
-          style={{ color: colors.text }}
-        >
-          Split
-        </Text>
-
+      <View
+        className="flex-1 justify-center"
+        style={{ paddingVertical: PREVIEW_MARGIN / 2, paddingTop: insets.top + PREVIEW_MARGIN / 2 }}
+        onLayout={handleContainerLayout}
+      >
         <View
           style={{ width: previewWidth, height: displayHeight, alignSelf: "center" }}
           className={`overflow-hidden rounded-lg ${inverted ? "bg-black" : "bg-white"}`}
@@ -375,80 +361,68 @@ export function SplitOverlay({
           })}
         </View>
 
-        <View onLayout={handleButtonsLayout} className="mt-4 w-full">
-          <View className="mb-3 items-center">
-            <Text className="text-center text-sm font-medium" style={{ color: colors.text }}>
-              Overlap
-            </Text>
-            <View className="mt-2 flex-row items-center gap-3">
+      </View>
+
+      <View>
+        <Toolbar
+          title="Split"
+          subtitle="Drag a line to move it"
+          left={<IconButton icon={X} label="Cancel split" onPress={onCancel} disabled={working} {...toolbarButton} />}
+          right={
+            <View className="flex-row items-center">
+              <IconButton
+                icon={Plus}
+                label="Add cut line"
+                onPress={handleAddCut}
+                disabled={working || !canAddCut}
+                {...toolbarButton}
+              />
+              <IconButton
+                icon={Trash2}
+                label="Delete cut line"
+                onPress={handleDeleteCut}
+                disabled={working || !canDeleteCut}
+                {...toolbarButton}
+              />
+              <View className="mx-1 h-6 w-px" style={{ backgroundColor: colors.border }} />
               <IconButton
                 icon={Minus}
                 label="Decrease overlap"
-                iconColor={colors.text}
                 onPress={handleDecreaseOverlap}
                 disabled={working || !canDecreaseOverlap}
-                className="h-9 w-9 min-h-9 min-w-9"
-                style={{ backgroundColor: colors.control, borderColor: colors.border }}
+                {...toolbarButton}
               />
               <Text
-                className="min-w-16 text-center text-sm font-semibold"
+                className="min-w-10 text-center text-xs font-semibold"
                 style={{ color: colors.text }}
+                accessibilityLabel={`Overlap ${overlapLabel(overlapRatio)}`}
               >
                 {overlapLabel(overlapRatio)}
               </Text>
               <IconButton
                 icon={Plus}
                 label="Increase overlap"
-                iconColor={colors.text}
                 onPress={handleIncreaseOverlap}
                 disabled={working || !canIncreaseOverlap}
-                className="h-9 w-9 min-h-9 min-w-9"
-                style={{ backgroundColor: colors.control, borderColor: colors.border }}
+                {...toolbarButton}
               />
+              <Pressable
+                onPress={() => void handleConfirm()}
+                disabled={working}
+                accessibilityLabel="Apply cuts"
+                accessibilityRole="button"
+                className="ml-1 h-9 min-w-11 items-center justify-center rounded-xl px-3"
+                style={{ backgroundColor: colors.controlActive }}
+              >
+                {working ? (
+                  <ActivityIndicator color={colors.controlActiveText} />
+                ) : (
+                  <Scissors size={20} color={colors.controlActiveText} strokeWidth={2} />
+                )}
+              </Pressable>
             </View>
-          </View>
-
-          <View className="w-full flex-row flex-wrap justify-center gap-2">
-            <IconButton
-              icon={Scissors}
-              label="Add cut line"
-              iconColor={colors.text}
-              onPress={handleAddCut}
-              disabled={working || !canAddCut}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <IconButton
-              icon={Trash2}
-              label="Delete cut line"
-              iconColor={colors.text}
-              onPress={handleDeleteCut}
-              disabled={working || !canDeleteCut}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <IconButton
-              icon={X}
-              label="Cancel split"
-              iconColor={colors.text}
-              onPress={onCancel}
-              disabled={working}
-              style={{ backgroundColor: colors.control, borderColor: colors.border }}
-            />
-            <Pressable
-              onPress={() => void handleConfirm()}
-              disabled={working}
-              accessibilityLabel="Apply cuts"
-              accessibilityRole="button"
-              className="min-h-11 min-w-11 items-center justify-center rounded-xl px-4"
-              style={{ backgroundColor: colors.controlActive }}
-            >
-              {working ? (
-                <ActivityIndicator color={colors.controlActiveText} />
-              ) : (
-                <Scissors size={22} color={colors.controlActiveText} strokeWidth={2} />
-              )}
-            </Pressable>
-          </View>
-        </View>
+          }
+        />
       </View>
     </View>
   );

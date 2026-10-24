@@ -37,12 +37,6 @@ function RootStack() {
             headerShown: false,
           }}
         />
-        <Stack.Screen
-          name="library"
-          options={{
-            title: "Library",
-          }}
-        />
       </Stack>
     </>
   );
