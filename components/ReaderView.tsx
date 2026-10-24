@@ -4,11 +4,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GarbageOverlay } from "./GarbageOverlay";
 import { READER_BAR_BOTTOM, ReaderBar } from "./ReaderBar";
 import { defaultSaveTitle, SaveNameOverlay } from "./SaveNameOverlay";
+import { SongsOverlay } from "./SongsOverlay";
 import { SplitOverlay } from "./SplitOverlay";
 import { StripColumnView } from "./StripColumnView";
 import type { useReaderBar } from "../hooks/useReaderBar";
 import type { useReaderPaging } from "../hooks/useReaderPaging";
 import type { SaveStatus } from "../hooks/useScorePersistence";
+import type { useSongs } from "../hooks/useSongs";
 import type { useStripEditing } from "../hooks/useStripEditing";
 import { MAX_VISIBLE_COUNT, MIN_VISIBLE_COUNT, type ReaderStrip } from "../lib/corrections";
 import { useTheme } from "../lib/theme";
@@ -26,6 +28,7 @@ type ReaderViewProps = {
   paging: ReturnType<typeof useReaderPaging>;
   bar: ReturnType<typeof useReaderBar>;
   edit: ReturnType<typeof useStripEditing>;
+  songs: ReturnType<typeof useSongs>;
   renaming: boolean;
   onStartRename: () => void;
   onCancelRename: () => void;
@@ -43,6 +46,7 @@ export function ReaderView({
   paging,
   bar,
   edit,
+  songs,
   renaming,
   onStartRename,
   onCancelRename,
@@ -103,6 +107,8 @@ export function ReaderView({
           canIncrease={activeVisibleCount < MAX_VISIBLE_COUNT}
           editing={edit.editing}
           garbageCount={garbage.length}
+          songCount={songs.ordered.length}
+          currentSongTitle={songs.currentSong?.title ?? null}
           onShow={bar.showBar}
           onBack={onClose}
           onDecrease={paging.decreaseVisibleCount}
@@ -110,6 +116,8 @@ export function ReaderView({
           onToggleEdit={edit.toggleEditing}
           onOpenGarbage={() => edit.setShowGarbage(true)}
           onRename={onStartRename}
+          onOpenSongs={() => songs.setListOpen(true)}
+          onMarkSong={songs.markSongHere}
           onInteraction={bar.bumpBar}
           onMenuOpenChange={bar.setBarMenuOpen}
         />
@@ -130,6 +138,39 @@ export function ReaderView({
           inverted={darkMode}
           onRestore={edit.handleRestoreFromGarbage}
           onClose={() => edit.setShowGarbage(false)}
+        />
+      )}
+
+      {songs.listOpen && (
+        <SongsOverlay
+          songs={songs.ordered}
+          currentSongId={songs.currentSong?.id ?? null}
+          onJump={(songId) => {
+            songs.jumpToSong(songId);
+            songs.setListOpen(false);
+          }}
+          onMarkSong={() => {
+            songs.setListOpen(false);
+            songs.markSongHere();
+          }}
+          onRename={songs.renameSong}
+          onRemove={songs.removeSong}
+          onClose={() => songs.setListOpen(false)}
+        />
+      )}
+
+      {songs.naming && (
+        <SaveNameOverlay
+          initialTitle={
+            songs.naming.kind === "new" ? songs.naming.suggestedTitle : songs.naming.song.title
+          }
+          saving={false}
+          heading={songs.naming.kind === "new" ? "New song starts here" : "Rename song"}
+          placeholder="Song name"
+          cancelAccessibilityLabel="Cancel"
+          confirmAccessibilityLabel={songs.naming.kind === "new" ? "Add song" : "Rename song"}
+          onCancel={() => songs.setNaming(null)}
+          onConfirm={songs.confirmName}
         />
       )}
 

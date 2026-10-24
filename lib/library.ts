@@ -9,6 +9,7 @@ import {
   type ReaderStrip,
 } from "./corrections";
 import { canMoveFolder, removeFolder, type Folder } from "./folders";
+import type { Song } from "./songs";
 import { getImagePixelSize } from "./splitStrip";
 
 export type SavedStrip = {
@@ -34,6 +35,8 @@ export type SavedScore = {
   garbage?: SavedStrip[];
   // The folder it's filed in; missing or null means the library root.
   folderId?: string | null;
+  // Pieces inside a book, in reading order.
+  songs?: Song[];
 };
 
 export type Library = {
@@ -51,6 +54,8 @@ export type SaveScoreInput = {
   landscapeVisibleCount?: number;
   // Where a new score is filed; an existing score keeps its folder.
   folderId?: string | null;
+  // Leave out to keep the saved songs; an empty list removes them.
+  songs?: Song[];
 };
 
 export function resolvePortraitVisibleCount(score: SavedScore): number {
@@ -423,6 +428,7 @@ export async function saveScore(input: SaveScoreInput): Promise<SaveScoreResult>
       strips: finalStrips,
       garbage: finalGarbage.length > 0 ? finalGarbage : undefined,
       folderId: previous ? previous.folderId : (input.folderId ?? null),
+      songs: songsToSave(input.songs ?? previous?.songs),
     };
 
     const library = await loadLibrary();
@@ -438,6 +444,10 @@ export async function saveScore(input: SaveScoreInput): Promise<SaveScoreResult>
     deleteDirectoryIfExists(stagingDir);
     throw error;
   }
+}
+
+function songsToSave(songs: Song[] | undefined): Song[] | undefined {
+  return songs && songs.length > 0 ? songs : undefined;
 }
 
 export async function deleteScore(id: string): Promise<void> {

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  BookmarkPlus,
   ChevronLeft,
   Ellipsis,
+  ListMusic,
   Minus,
   Moon,
   Pencil,
@@ -33,6 +35,9 @@ type ReaderBarProps = {
   canIncrease: boolean;
   editing: boolean;
   garbageCount: number;
+  songCount: number;
+  // The song on screen, shown under the title in a book.
+  currentSongTitle: string | null;
   onShow: () => void;
   onBack: () => void;
   onDecrease: () => void;
@@ -40,6 +45,8 @@ type ReaderBarProps = {
   onToggleEdit: () => void;
   onOpenGarbage: () => void;
   onRename: () => void;
+  onOpenSongs: () => void;
+  onMarkSong: () => void;
   // Any press on the bar, so the parent can postpone auto-hide.
   onInteraction: () => void;
   onMenuOpenChange: (open: boolean) => void;
@@ -58,6 +65,8 @@ export function ReaderBar({
   canIncrease,
   editing,
   garbageCount,
+  songCount,
+  currentSongTitle,
   onShow,
   onBack,
   onDecrease,
@@ -65,6 +74,8 @@ export function ReaderBar({
   onToggleEdit,
   onOpenGarbage,
   onRename,
+  onOpenSongs,
+  onMarkSong,
   onInteraction,
   onMenuOpenChange,
 }: ReaderBarProps) {
@@ -103,9 +114,7 @@ export function ReaderBar({
       ? "Saving…"
       : editing
         ? "Editing"
-        : saveStatus === "saved"
-          ? "Saved"
-          : undefined;
+        : (currentSongTitle ?? (saveStatus === "saved" ? "Saved" : undefined));
 
   return (
     <>
@@ -167,6 +176,10 @@ export function ReaderBar({
           right={BAR_MARGIN + insets.right}
           onClose={() => setMenu(false)}
           items={[
+            ...(songCount > 0
+              ? [{ label: `Songs (${songCount})`, icon: ListMusic, onPress: onOpenSongs }]
+              : []),
+            { label: "Mark a song here", icon: BookmarkPlus, onPress: onMarkSong },
             { label: "Rename", icon: PencilLine, onPress: onRename },
             {
               label: garbageCount > 0 ? `Removed systems (${garbageCount})` : "Removed systems",

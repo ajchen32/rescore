@@ -25,6 +25,7 @@ import {
   persistSnapshotsEqual,
   type PersistSnapshot,
 } from "../lib/persistSnapshot";
+import type { Song } from "../lib/songs";
 
 const AUTOSAVE_DEBOUNCE_MS = 600;
 const SAVE_WAIT_POLL_MS = 50;
@@ -39,11 +40,13 @@ type ScorePersistenceOptions = {
   portraitVisibleCount: number;
   landscapeVisibleCount: number;
   selectedName: string | null;
+  songs: Song[];
   // The library folder a newly imported score is filed in.
   newScoreFolderId: string | null;
   setStrips: Dispatch<SetStateAction<ReaderStrip[]>>;
   setGarbage: Dispatch<SetStateAction<ReaderStrip[]>>;
   setSelectedName: Dispatch<SetStateAction<string | null>>;
+  setSongs: Dispatch<SetStateAction<Song[]>>;
   setPortraitVisibleCount: Dispatch<SetStateAction<number>>;
   setLandscapeVisibleCount: Dispatch<SetStateAction<number>>;
   setErrorMessage: Dispatch<SetStateAction<string | null>>;
@@ -63,10 +66,12 @@ export function useScorePersistence({
   portraitVisibleCount,
   landscapeVisibleCount,
   selectedName,
+  songs,
   newScoreFolderId,
   setStrips,
   setGarbage,
   setSelectedName,
+  setSongs,
   setPortraitVisibleCount,
   setLandscapeVisibleCount,
   setErrorMessage,
@@ -93,6 +98,8 @@ export function useScorePersistence({
   const landscapeVisibleCountRef = useRef(landscapeVisibleCount);
   const selectedNameRef = useRef(selectedName);
   const savedScoreIdRef = useRef(savedScoreId);
+  const songsRef = useRef(songs);
+  songsRef.current = songs;
   stripsRef.current = strips;
   garbageRef.current = garbage;
   portraitVisibleCountRef.current = portraitVisibleCount;
@@ -135,16 +142,19 @@ export function useScorePersistence({
         const loadedGarbage = (score.garbage ?? []).map(savedStripToReaderStrip);
         const loadedPortraitVisibleCount = resolvePortraitVisibleCount(score);
         const loadedLandscapeVisibleCount = resolveLandscapeVisibleCount(score);
+        const loadedSongs = score.songs ?? [];
         lastSavedSnapshotRef.current = buildPersistSnapshot(
           loadedStrips,
           loadedGarbage,
           loadedPortraitVisibleCount,
           loadedLandscapeVisibleCount,
-          score.title
+          score.title,
+          loadedSongs
         );
         setStrips(loadedStrips);
         setGarbage(loadedGarbage);
         setSelectedName(score.title);
+        setSongs(loadedSongs);
         setPortraitVisibleCount(loadedPortraitVisibleCount);
         setLandscapeVisibleCount(loadedLandscapeVisibleCount);
         setSavedScoreId(score.id);
@@ -168,6 +178,7 @@ export function useScorePersistence({
     setLandscapeVisibleCount,
     setPortraitVisibleCount,
     setSelectedName,
+    setSongs,
     setStrips,
   ]);
 
@@ -192,6 +203,7 @@ export function useScorePersistence({
         const currentPortraitVisibleCount = portraitVisibleCountRef.current;
         const currentLandscapeVisibleCount = landscapeVisibleCountRef.current;
         const currentSavedScoreId = savedScoreIdRef.current;
+        const currentSongs = songsRef.current;
         const epoch = saveEpochRef.current;
 
         let title: string;
@@ -210,7 +222,8 @@ export function useScorePersistence({
           currentGarbage,
           currentPortraitVisibleCount,
           currentLandscapeVisibleCount,
-          title
+          title,
+          currentSongs
         );
 
         if (
@@ -231,6 +244,7 @@ export function useScorePersistence({
           portraitVisibleCount: currentPortraitVisibleCount,
           landscapeVisibleCount: currentLandscapeVisibleCount,
           folderId: newScoreFolderIdRef.current,
+          songs: currentSongs,
         });
 
         // The reader was closed while this save ran; don't repopulate it.
@@ -240,7 +254,11 @@ export function useScorePersistence({
 
         // An edit made while this save was running (whose debounced autosave has
         // not fired yet) must not be overwritten by the older saved result.
-        if (stripsRef.current !== currentStrips || garbageRef.current !== currentGarbage) {
+        if (
+          stripsRef.current !== currentStrips ||
+          garbageRef.current !== currentGarbage ||
+          songsRef.current !== currentSongs
+        ) {
           savePendingRef.current = true;
         }
 
@@ -256,7 +274,8 @@ export function useScorePersistence({
             nextGarbage,
             currentPortraitVisibleCount,
             currentLandscapeVisibleCount,
-            result.score.title
+            result.score.title,
+            currentSongs
           );
         }
 
@@ -292,7 +311,8 @@ export function useScorePersistence({
       garbage,
       portraitVisibleCount,
       landscapeVisibleCount,
-      title
+      title,
+      songs
     );
 
     if (
@@ -327,6 +347,7 @@ export function useScorePersistence({
     ready,
     savedScoreId,
     selectedName,
+    songs,
     strips,
   ]);
 

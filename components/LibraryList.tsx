@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Folder as FolderIcon,
@@ -33,6 +34,7 @@ import {
   type Library,
   type SavedScore,
 } from "../lib/library";
+import type { Song } from "../lib/songs";
 import { useTheme } from "../lib/theme";
 
 const LONG_PRESS_DELAY_MS = 250;
@@ -45,7 +47,8 @@ type LibraryListProps = {
   // Folder ids from the root to the open folder; empty at the library root.
   folderPath: string[];
   onNavigate: (folderPath: string[]) => void;
-  onOpen: (scoreId: string) => void;
+  // Opens a score, at a song when one is given.
+  onOpen: (scoreId: string, songId?: string) => void;
   onError: (message: string) => void;
   // Shown under the empty state.
   emptyAction?: ReactNode;
@@ -53,7 +56,8 @@ type LibraryListProps = {
 
 type Row =
   | { kind: "folder"; folder: Folder; location?: string }
-  | { kind: "score"; score: SavedScore; location?: string };
+  | { kind: "score"; score: SavedScore; location?: string }
+  | { kind: "song"; score: SavedScore; song: Song; location?: string };
 
 type Target = { kind: "folder"; folder: Folder } | { kind: "score"; score: SavedScore };
 
@@ -77,6 +81,8 @@ export function LibraryList({
   const [renameTarget, setRenameTarget] = useState<Target | null>(null);
   const [moveTarget, setMoveTarget] = useState<Target | null>(null);
   const [renaming, setRenaming] = useState(false);
+  // Books whose song list is shown.
+  const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -134,15 +140,37 @@ export function LibraryList({
         ...scores
           .filter((score) => score.title.toLowerCase().includes(needle))
           .map((score): Row => ({ kind: "score", score, location: locationOf(score.folderId) })),
+        ...scores.flatMap((score) =>
+          (score.songs ?? [])
+            .filter((song) => song.title.toLowerCase().includes(needle))
+            .map((song): Row => ({ kind: "song", score, song, location: score.title }))
+        ),
       ];
     }
     return [
       ...childFolders(folders, currentFolderId).map((folder): Row => ({ kind: "folder", folder })),
       ...scores
         .filter((score) => resolveParentId(folders, score.folderId) === currentFolderId)
-        .map((score): Row => ({ kind: "score", score })),
+        .flatMap((score): Row[] => [
+          { kind: "score", score },
+          ...(expandedBooks.has(score.id)
+            ? (score.songs ?? []).map((song): Row => ({ kind: "song", score, song }))
+            : []),
+        ]),
     ];
-  }, [currentFolderId, folders, locationOf, query, scores]);
+  }, [currentFolderId, expandedBooks, folders, locationOf, query, scores]);
+
+  const toggleBook = useCallback((scoreId: string) => {
+    setExpandedBooks((current) => {
+      const next = new Set(current);
+      if (next.has(scoreId)) {
+        next.delete(scoreId);
+      } else {
+        next.add(scoreId);
+      }
+      return next;
+    });
+  }, []);
 
   const reload = useCallback(() => setReloadCount((count) => count + 1), []);
 
@@ -271,23 +299,69 @@ export function LibraryList({
       );
     }
 
+    if (item.kind === "song") {
+      const { score, song } = item;
+      return (
+        <Pressable
+          onPress={() => onOpen(score.id, song.id)}
+          className="flex-row items-center gap-3 border-b py-2.5 pr-4"
+          style={{
+            borderBottomColor: colors.border,
+            paddingLeft: item.location ? 16 : 40,
+          }}
+        >
+          <View className="min-w-0 flex-1">
+            <Text className="text-base" style={{ color: colors.text }} numberOfLines={1}>
+              {song.title}
+            </Text>
+            {item.location && (
+              <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                in {item.location}
+              </Text>
+            )}
+          </View>
+          <Text className="text-xs" style={{ color: colors.textMuted }}>
+            p. {song.start.pageIndex + 1}
+          </Text>
+        </Pressable>
+      );
+    }
+
     const { score } = item;
+    const songCount = score.songs?.length ?? 0;
+    const expanded = expandedBooks.has(score.id);
+    const Chevron = expanded ? ChevronDown : ChevronRight;
     return (
       <Pressable
         onPress={() => onOpen(score.id)}
         onLongPress={() => setActionTarget({ kind: "score", score })}
         delayLongPress={LONG_PRESS_DELAY_MS}
-        className="border-b px-4 py-2.5"
+        className="flex-row items-center border-b py-2.5 pl-4 pr-2"
         style={{ borderBottomColor: colors.border }}
       >
-        <Text className="text-base font-medium" style={{ color: colors.text }} numberOfLines={1}>
-          {score.title}
-        </Text>
-        <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
-          {item.location ? `${item.location} · ` : ""}
-          {formatScoreDate(score.createdAt)} · {score.stripCount}{" "}
-          {score.stripCount === 1 ? "system" : "systems"}
-        </Text>
+        <View className="min-w-0 flex-1">
+          <Text className="text-base font-medium" style={{ color: colors.text }} numberOfLines={1}>
+            {score.title}
+          </Text>
+          <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+            {item.location ? `${item.location} · ` : ""}
+            {formatScoreDate(score.createdAt)} ·{" "}
+            {songCount > 0
+              ? `${songCount} ${songCount === 1 ? "song" : "songs"}`
+              : `${score.stripCount} ${score.stripCount === 1 ? "system" : "systems"}`}
+          </Text>
+        </View>
+        {songCount > 0 && !searching && (
+          <Pressable
+            onPress={() => toggleBook(score.id)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? "Hide songs" : "Show songs"}
+            className="h-9 w-9 items-center justify-center rounded-full"
+          >
+            <Chevron size={20} color={colors.textMuted} strokeWidth={2} />
+          </Pressable>
+        )}
       </Pressable>
     );
   };
@@ -326,7 +400,13 @@ export function LibraryList({
       ) : (
         <FlatList
           data={rows}
-          keyExtractor={(item) => (item.kind === "folder" ? `f-${item.folder.id}` : item.score.id)}
+          keyExtractor={(item) =>
+            item.kind === "folder"
+              ? `f-${item.folder.id}`
+              : item.kind === "song"
+                ? `s-${item.score.id}-${item.song.id}`
+                : item.score.id
+          }
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <Text className="px-4 py-6 text-center text-base" style={{ color: colors.textMuted }}>

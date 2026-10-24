@@ -1,7 +1,7 @@
 import {
   chunkStrips,
   clampVisibleCount,
-  columnKeepingFirstStrip,
+  columnContainingStrip,
   continuesOnSamePage,
   insertAtPagePosition,
   makeSplitPieceFromLeaves,
@@ -247,13 +247,30 @@ describe("columns", () => {
     expect(chunkStrips([], 3)).toEqual([]);
   });
 
-  it("keeps the top system on screen when the count per column changes", () => {
-    // Column 2 of 3 per column starts at system 6.
-    expect(columnKeepingFirstStrip(2, 3, 4)).toBe(1); // systems 4-7
-    expect(columnKeepingFirstStrip(2, 3, 2)).toBe(3); // systems 6-7
-    expect(columnKeepingFirstStrip(2, 3, 1)).toBe(6);
-    expect(columnKeepingFirstStrip(0, 3, 5)).toBe(0);
-    expect(columnKeepingFirstStrip(2, 0, 3)).toBe(0);
+  it("starts a new column at each break", () => {
+    const strips = ["a", "b", "c", "d", "e"].map((id) => strip(id));
+    expect(chunkStrips(strips, 3, [2]).map((column) => ids(column.strips))).toEqual([
+      ["a", "b"],
+      ["c", "d", "e"],
+    ]);
+    expect(chunkStrips(strips, 2, [1, 4]).map((column) => ids(column.strips))).toEqual([
+      ["a"],
+      ["b", "c"],
+      ["d"],
+      ["e"],
+    ]);
+  });
+
+  it("finds the column holding a strip, so the top system stays on screen", () => {
+    const strips = ["a", "b", "c", "d", "e", "f", "g"].map((id) => strip(id));
+    // Top of the screen is system 6 (index 5) with 3 per column…
+    const three = chunkStrips(strips, 3);
+    expect(three[columnContainingStrip(three, 3)].startIndex).toBe(3);
+    // …switching to 4 per column shows systems 5-8, still including it.
+    const four = chunkStrips(strips, 4);
+    expect(columnContainingStrip(four, 5)).toBe(1);
+    expect(columnContainingStrip(chunkStrips(strips, 1), 5)).toBe(5);
+    expect(columnContainingStrip([], 5)).toBe(0);
   });
 
   it("divides the reader height between visible strips", () => {

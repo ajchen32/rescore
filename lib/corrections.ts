@@ -295,29 +295,41 @@ export function stripSlotHeight(readerHeight: number, visibleCount: number): num
 }
 
 /**
- * The column to show after the number of systems per column changes (the -/+
- * buttons or a rotation), chosen so the system that was at the top of the old
- * column is still on screen.
+ * The column holding strip `stripIndex`. Used to keep the system that was at the
+ * top of the screen visible when columns are rebuilt (the -/+ buttons, rotation).
  */
-export function columnKeepingFirstStrip(
-  columnIndex: number,
-  oldVisibleCount: number,
-  newVisibleCount: number
-): number {
-  if (oldVisibleCount <= 0 || newVisibleCount <= 0) {
-    return 0;
+export function columnContainingStrip(columns: StripColumn[], stripIndex: number): number {
+  for (let index = columns.length - 1; index >= 0; index -= 1) {
+    if (columns[index].startIndex <= stripIndex) {
+      return index;
+    }
   }
-  return Math.floor((columnIndex * oldVisibleCount) / newVisibleCount);
+  return 0;
 }
 
-export function chunkStrips(strips: ReaderStrip[], visibleCount: number): StripColumn[] {
+/**
+ * Groups strips into columns of `visibleCount`. A column also starts at every
+ * index in `breaks` (where a song begins), so each song opens on a fresh screen.
+ */
+export function chunkStrips(
+  strips: ReaderStrip[],
+  visibleCount: number,
+  breaks: number[] = []
+): StripColumn[] {
   const columns: StripColumn[] = [];
-  for (let index = 0; index < strips.length; index += visibleCount) {
+  const breakSet = new Set(breaks);
+  let index = 0;
+  while (index < strips.length) {
+    let end = index + 1;
+    while (end < strips.length && end - index < visibleCount && !breakSet.has(end)) {
+      end += 1;
+    }
     columns.push({
-      id: `col-${strips[index]?.id ?? index}`,
-      strips: strips.slice(index, index + visibleCount),
+      id: `col-${strips[index].id}`,
+      strips: strips.slice(index, end),
       startIndex: index,
     });
+    index = end;
   }
   return columns;
 }

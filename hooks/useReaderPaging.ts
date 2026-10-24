@@ -17,12 +17,11 @@ import {
 import {
   chunkStrips,
   clampVisibleCount,
-  columnKeepingFirstStrip,
-  DEFAULT_LANDSCAPE_VISIBLE_COUNT,
-  DEFAULT_VISIBLE_COUNT,
+  columnContainingStrip,
   stripSlotHeight,
   type ReaderStrip,
 } from "../lib/corrections";
+import { songBreaks, type Song } from "../lib/songs";
 
 const CHROME_SWIPE_THRESHOLD = 36;
 const SWIPE_BACK_THRESHOLD = 36;
@@ -30,12 +29,16 @@ const SWIPE_BACK_THRESHOLD = 36;
 type ReaderLayoutSnapshot = {
   width: number;
   height: number;
-  portraitVisibleCount: number;
-  landscapeVisibleCount: number;
+  // The system at the top of the screen, kept on screen across a rotation.
+  firstStripIndex: number;
+  // Where songs force a new column; adding or removing one re-forms the columns.
+  breaksKey: string;
 };
 
 type ReaderPagingOptions = {
   strips: ReaderStrip[];
+  // Each song starts on a fresh column.
+  songs: Song[];
   portraitVisibleCount: number;
   landscapeVisibleCount: number;
   setPortraitVisibleCount: Dispatch<SetStateAction<number>>;
@@ -51,6 +54,7 @@ type ReaderPagingOptions = {
  */
 export function useReaderPaging({
   strips,
+  songs,
   portraitVisibleCount,
   landscapeVisibleCount,
   setPortraitVisibleCount,
@@ -66,15 +70,16 @@ export function useReaderPaging({
   const readerLayoutRef = useRef<ReaderLayoutSnapshot>({
     width: viewportWidth,
     height: viewportHeight,
-    portraitVisibleCount: DEFAULT_VISIBLE_COUNT,
-    landscapeVisibleCount: DEFAULT_LANDSCAPE_VISIBLE_COUNT,
+    firstStripIndex: 0,
+    breaksKey: "",
   });
 
   const activeVisibleCount = isLandscape ? landscapeVisibleCount : portraitVisibleCount;
 
+  const breaks = useMemo(() => songBreaks(strips, songs), [songs, strips]);
   const columns = useMemo(
-    () => chunkStrips(strips, activeVisibleCount),
-    [activeVisibleCount, strips]
+    () => chunkStrips(strips, activeVisibleCount, breaks),
+    [activeVisibleCount, breaks, strips]
   );
   const clampedColumnIndex =
     columns.length > 0 ? Math.min(columnIndex, columns.length - 1) : 0;
@@ -99,6 +104,7 @@ export function useReaderPaging({
         isActive: index === clampedColumnIndex,
       }));
   }, [clampedColumnIndex, columns]);
+  const firstStripIndex = columns[clampedColumnIndex]?.startIndex ?? 0;
   // Separators overlay the strip boundaries, so they take no layout space.
   const slotHeight = stripSlotHeight(readerHeight, activeVisibleCount);
 
@@ -171,35 +177,28 @@ export function useReaderPaging({
     })
   ).current;
 
-  // On rotation, keep the first visible system on screen.
+  // When the columns are re-formed by a rotation or by adding or removing a song,
+  // keep the system that was at the top of the screen visible.
+  const breaksKey = breaks.join(",");
   useEffect(() => {
     const previous = readerLayoutRef.current;
-    const wasLandscape = previous.width > previous.height;
     const sizeChanged =
       previous.width !== viewportWidth || previous.height !== viewportHeight;
+    const breaksChanged = previous.breaksKey !== breaksKey;
 
-    if (sizeChanged && strips.length > 0 && previous.width > 0) {
-      const oldVisibleCount = wasLandscape
-        ? previous.landscapeVisibleCount
-        : previous.portraitVisibleCount;
-      setColumnIndex(columnKeepingFirstStrip(columnIndex, oldVisibleCount, activeVisibleCount));
+    let shownColumn = Math.min(columnIndex, Math.max(columns.length - 1, 0));
+    if (strips.length > 0 && ((sizeChanged && previous.width > 0) || breaksChanged)) {
+      shownColumn = columnContainingStrip(columns, previous.firstStripIndex);
+      setColumnIndex(shownColumn);
     }
 
     readerLayoutRef.current = {
       width: viewportWidth,
       height: viewportHeight,
-      portraitVisibleCount,
-      landscapeVisibleCount,
+      firstStripIndex: columns[shownColumn]?.startIndex ?? 0,
+      breaksKey,
     };
-  }, [
-    activeVisibleCount,
-    landscapeVisibleCount,
-    portraitVisibleCount,
-    columnIndex,
-    strips.length,
-    viewportHeight,
-    viewportWidth,
-  ]);
+  }, [breaksKey, columnIndex, columns, strips.length, viewportHeight, viewportWidth]);
 
   // Keep the column in range. This runs right after the rotation effect above,
   // in the same commit, so it must clamp the index that effect just set rather
@@ -227,25 +226,35 @@ export function useReaderPaging({
       } else {
         setPortraitVisibleCount(nextCount);
       }
-      setColumnIndex(columnKeepingFirstStrip(clampedColumnIndex, activeVisibleCount, nextCount));
+      const nextColumns = chunkStrips(strips, nextCount, breaks);
+      setColumnIndex(columnContainingStrip(nextColumns, firstStripIndex));
     },
     [
       activeVisibleCount,
-      clampedColumnIndex,
+      breaks,
+      firstStripIndex,
       isLandscape,
       setLandscapeVisibleCount,
       setPortraitVisibleCount,
+      strips,
     ]
   );
   const decreaseVisibleCount = useCallback(() => changeVisibleCount(-1), [changeVisibleCount]);
   const increaseVisibleCount = useCallback(() => changeVisibleCount(1), [changeVisibleCount]);
+
+  const jumpToStrip = useCallback(
+    (stripIndex: number) => setColumnIndex(columnContainingStrip(columns, stripIndex)),
+    [columns]
+  );
 
   return {
     activeVisibleCount,
     preloadedColumns,
     readerHeight,
     slotHeight,
+    firstStripIndex,
     setColumnIndex,
+    jumpToStrip,
     handleReaderLayout,
     handleReaderPress,
     panHandlers: readerPanResponder.panHandlers,

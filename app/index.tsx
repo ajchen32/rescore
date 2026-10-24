@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -12,12 +12,14 @@ import { usePageImport, type AppPhase } from "../hooks/usePageImport";
 import { useReaderBar } from "../hooks/useReaderBar";
 import { useReaderPaging } from "../hooks/useReaderPaging";
 import { useScorePersistence } from "../hooks/useScorePersistence";
+import { useSongDialogs, useSongs } from "../hooks/useSongs";
 import { useStripEditing } from "../hooks/useStripEditing";
 import {
   DEFAULT_LANDSCAPE_VISIBLE_COUNT,
   DEFAULT_VISIBLE_COUNT,
   type ReaderStrip,
 } from "../lib/corrections";
+import { songStartIndices, type Song } from "../lib/songs";
 import { useTheme } from "../lib/theme";
 
 export default function HomeScreen() {
@@ -27,6 +29,7 @@ export default function HomeScreen() {
   const [garbage, setGarbage] = useState<ReaderStrip[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [songs, setSongs] = useState<Song[]>([]);
   const [portraitVisibleCount, setPortraitVisibleCount] = useState(DEFAULT_VISIBLE_COUNT);
   const [landscapeVisibleCount, setLandscapeVisibleCount] = useState(
     DEFAULT_LANDSCAPE_VISIBLE_COUNT
@@ -36,14 +39,23 @@ export default function HomeScreen() {
   const [libraryQuery, setLibraryQuery] = useState("");
   // Folder ids from the library root to the open folder.
   const [folderPath, setFolderPath] = useState<string[]>([]);
+  // A song to open at once its score has loaded (from tapping a song in the library).
+  const pendingSongIdRef = useRef<string | null>(null);
+  const [songToShow, setSongToShow] = useState<string | null>(null);
 
   const showReader = strips.length > 0;
   const edit = useStripEditing({ strips, garbage, setStrips, setGarbage, setErrorMessage });
+  const songDialogs = useSongDialogs();
   const overlayOpen =
-    edit.splitTarget !== null || edit.showGarbage || renamingTitle || phase === "choosing";
+    edit.splitTarget !== null ||
+    edit.showGarbage ||
+    renamingTitle ||
+    songDialogs.open ||
+    phase === "choosing";
   const bar = useReaderBar({ showReader, editing: edit.editing, overlayOpen });
   const paging = useReaderPaging({
     strips,
+    songs,
     portraitVisibleCount,
     landscapeVisibleCount,
     setPortraitVisibleCount,
@@ -52,15 +64,39 @@ export default function HomeScreen() {
     setChromeVisible: bar.setChromeVisible,
     bumpBar: bar.bumpBar,
   });
-  const { setColumnIndex } = paging;
+  const { setColumnIndex, jumpToStrip } = paging;
+  const songsApi = useSongs({
+    strips,
+    songs,
+    setSongs,
+    firstStripIndex: paging.firstStripIndex,
+    jumpToStrip,
+    dialogs: songDialogs,
+  });
   const resetEditing = edit.reset;
   const resetBar = bar.reset;
+  const resetSongDialogs = songDialogs.reset;
 
   const handleScoreLoaded = useCallback(() => {
     setPhase("done");
     resetEditing();
+    resetSongDialogs();
     setColumnIndex(0);
-  }, [resetEditing, setColumnIndex]);
+    setSongToShow(pendingSongIdRef.current);
+    pendingSongIdRef.current = null;
+  }, [resetEditing, resetSongDialogs, setColumnIndex]);
+
+  // Opening a song from the library: jump once the score's columns exist.
+  useEffect(() => {
+    if (songToShow === null || strips.length === 0) {
+      return;
+    }
+    const start = songStartIndices(strips, songs).get(songToShow);
+    if (start !== undefined) {
+      jumpToStrip(start);
+    }
+    setSongToShow(null);
+  }, [jumpToStrip, songToShow, songs, strips]);
 
   const persistence = useScorePersistence({
     ready: phase === "done",
@@ -69,16 +105,26 @@ export default function HomeScreen() {
     portraitVisibleCount,
     landscapeVisibleCount,
     selectedName,
+    songs,
     newScoreFolderId: folderPath.at(-1) ?? null,
     setStrips,
     setGarbage,
     setSelectedName,
+    setSongs,
     setPortraitVisibleCount,
     setLandscapeVisibleCount,
     setErrorMessage,
     onScoreLoaded: handleScoreLoaded,
   });
-  const { startNewScore, flushSave, endSession } = persistence;
+  const { startNewScore, flushSave, endSession, openSavedScore } = persistence;
+
+  const openScore = useCallback(
+    (scoreId: string, songId?: string) => {
+      pendingSongIdRef.current = songId ?? null;
+      openSavedScore(scoreId);
+    },
+    [openSavedScore]
+  );
 
   // Empties the reader (the visible counts carry over to the next score).
   const resetReader = useCallback(() => {
@@ -86,10 +132,12 @@ export default function HomeScreen() {
     setGarbage([]);
     setErrorMessage(null);
     setSelectedName(null);
+    setSongs([]);
     setColumnIndex(0);
     resetEditing();
     resetBar();
-  }, [resetBar, resetEditing, setColumnIndex]);
+    resetSongDialogs();
+  }, [resetBar, resetEditing, resetSongDialogs, setColumnIndex]);
 
   const beginImport = useCallback(() => {
     startNewScore();
@@ -134,6 +182,12 @@ export default function HomeScreen() {
   }, [endSession, flushSave, resetImport, resetReader]);
 
   const { splitTargetIndex, setSplitTargetIndex, showGarbage, setShowGarbage } = edit;
+  const {
+    naming: songNaming,
+    setNaming: setSongNaming,
+    listOpen: songListOpen,
+    setListOpen: setSongListOpen,
+  } = songDialogs;
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (phase === "choosing") {
@@ -146,6 +200,14 @@ export default function HomeScreen() {
       }
       if (showGarbage) {
         setShowGarbage(false);
+        return true;
+      }
+      if (songNaming) {
+        setSongNaming(null);
+        return true;
+      }
+      if (songListOpen) {
+        setSongListOpen(false);
         return true;
       }
       if (renamingTitle) {
@@ -170,8 +232,12 @@ export default function HomeScreen() {
     phase,
     renamingTitle,
     setShowGarbage,
+    setSongListOpen,
+    setSongNaming,
     setSplitTargetIndex,
     showGarbage,
+    songListOpen,
+    songNaming,
     showReader,
     splitTargetIndex,
   ]);
@@ -213,6 +279,7 @@ export default function HomeScreen() {
             paging={paging}
             bar={bar}
             edit={edit}
+            songs={songsApi}
             renaming={renamingTitle}
             onStartRename={() => setRenamingTitle(true)}
             onCancelRename={() => setRenamingTitle(false)}
@@ -228,7 +295,7 @@ export default function HomeScreen() {
             onFolderPathChange={setFolderPath}
             pickBusy={pageImport.pickBusy}
             busyMessage={pageImport.busy ? pageImport.busyMessage : null}
-            onOpenScore={persistence.openSavedScore}
+            onOpenScore={openScore}
             onPickPdf={pickPdf}
             onPickPhotos={pickPhotos}
             onError={setErrorMessage}
