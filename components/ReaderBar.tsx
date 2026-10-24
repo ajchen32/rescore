@@ -2,14 +2,12 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  BookmarkPlus,
   ChevronLeft,
   Ellipsis,
   ListMusic,
   Minus,
   Moon,
   Pencil,
-  PencilLine,
   Plus,
   Sun,
   Trash2,
@@ -46,7 +44,6 @@ type ReaderBarProps = {
   onOpenGarbage: () => void;
   onRename: () => void;
   onOpenSongs: () => void;
-  onMarkSong: () => void;
   // Any press on the bar, so the parent can postpone auto-hide.
   onInteraction: () => void;
   onMenuOpenChange: (open: boolean) => void;
@@ -75,7 +72,6 @@ export function ReaderBar({
   onOpenGarbage,
   onRename,
   onOpenSongs,
-  onMarkSong,
   onInteraction,
   onMenuOpenChange,
 }: ReaderBarProps) {
@@ -176,11 +172,11 @@ export function ReaderBar({
           right={BAR_MARGIN + insets.right}
           onClose={() => setMenu(false)}
           items={[
-            ...(songCount > 0
-              ? [{ label: `Songs (${songCount})`, icon: ListMusic, onPress: onOpenSongs }]
-              : []),
-            { label: "Mark a song here", icon: BookmarkPlus, onPress: onMarkSong },
-            { label: "Rename", icon: PencilLine, onPress: onRename },
+            {
+              label: songCount > 0 ? `Songs (${songCount})` : "Songs",
+              icon: ListMusic,
+              onPress: onOpenSongs,
+            },
             {
               label: garbageCount > 0 ? `Removed systems (${garbageCount})` : "Removed systems",
               icon: Trash2,

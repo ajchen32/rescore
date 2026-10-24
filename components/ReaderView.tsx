@@ -117,7 +117,6 @@ export function ReaderView({
           onOpenGarbage={() => edit.setShowGarbage(true)}
           onRename={onStartRename}
           onOpenSongs={() => songs.setListOpen(true)}
-          onMarkSong={songs.markSongHere}
           onInteraction={bar.bumpBar}
           onMenuOpenChange={bar.setBarMenuOpen}
         />

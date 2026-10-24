@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BookmarkPlus, PencilLine, Trash2, X } from "lucide-react-native";
+import { PencilLine, Trash2, X } from "lucide-react-native";
 
 import { ActionSheet } from "./ActionSheet";
 import { IconButton } from "./IconButton";
@@ -49,14 +49,18 @@ export function SongsOverlay({
             />
           }
           right={
-            <IconButton
-              icon={BookmarkPlus}
-              label="Mark a song here"
-              variant="sm"
-              ghost
-              iconColor={colors.text}
+            <Pressable
               onPress={onMarkSong}
-            />
+              accessibilityRole="button"
+              accessibilityLabel="Mark a song starting at the top of the screen"
+              hitSlop={8}
+              className="mx-1 h-8 items-center justify-center rounded-full px-3"
+              style={{ backgroundColor: colors.controlActive }}
+            >
+              <Text className="text-sm font-semibold" style={{ color: colors.controlActiveText }}>
+                Mark here
+              </Text>
+            </Pressable>
           }
         />
         <FlatList
@@ -64,7 +68,8 @@ export function SongsOverlay({
           keyExtractor={({ song }) => song.id}
           ListEmptyComponent={
             <Text className="px-6 py-8 text-center text-sm" style={{ color: colors.textMuted }}>
-              No songs yet. Turn to where a piece starts and choose Mark a song here.
+              No songs yet. Close this list, turn to where a piece starts, then come back and tap
+              Mark here.
             </Text>
           }
           renderItem={({ item: { song } }) => {

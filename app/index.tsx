@@ -8,7 +8,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { HomeView } from "../components/HomeView";
 import { PagePickerOverlay } from "../components/PagePickerOverlay";
 import { ReaderView } from "../components/ReaderView";
-import { SongReviewOverlay } from "../components/SongReviewOverlay";
 import { usePageImport, type AppPhase } from "../hooks/usePageImport";
 import { useReaderBar } from "../hooks/useReaderBar";
 import { useReaderPaging } from "../hooks/useReaderPaging";
@@ -52,8 +51,7 @@ export default function HomeScreen() {
     edit.showGarbage ||
     renamingTitle ||
     songDialogs.open ||
-    phase === "choosing" ||
-    phase === "reviewingSongs";
+    phase === "choosing";
   const bar = useReaderBar({ showReader, editing: edit.editing, overlayOpen });
   const paging = useReaderPaging({
     strips,
@@ -154,11 +152,10 @@ export default function HomeScreen() {
     setStrips,
     setGarbage,
     setSelectedName,
-    setSongs,
     setErrorMessage,
     onBeginImport: beginImport,
   });
-  const { reset: resetImport, clearPageSelection, finishSongReview } = pageImport;
+  const { reset: resetImport, clearPageSelection } = pageImport;
 
   const shouldKeepAwake = pageImport.pickBusy || strips.length > 0;
   useEffect(() => {
@@ -197,10 +194,6 @@ export default function HomeScreen() {
         clearPageSelection();
         return true;
       }
-      if (phase === "reviewingSongs") {
-        finishSongReview([]);
-        return true;
-      }
       if (splitTargetIndex !== null) {
         setSplitTargetIndex(null);
         return true;
@@ -235,7 +228,6 @@ export default function HomeScreen() {
   }, [
     clearPageSelection,
     closeReader,
-    finishSongReview,
     folderPath.length,
     phase,
     renamingTitle,
@@ -327,16 +319,6 @@ export default function HomeScreen() {
             onClear={pageImport.handleClearPageSelection}
             onCancel={clearPageSelection}
             onProcess={pageImport.handleProcessSelectedPages}
-          />
-        )}
-
-        {phase === "reviewingSongs" && (
-          <SongReviewOverlay
-            strips={strips}
-            starts={pageImport.suggestedSongStarts}
-            inverted={darkMode}
-            onConfirm={finishSongReview}
-            onSkip={() => finishSongReview([])}
           />
         )}
 

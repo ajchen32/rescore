@@ -11,8 +11,6 @@ import {
 } from "piano-pdf-parser-core";
 
 import { toReaderStrips, type ReaderStrip } from "../lib/corrections";
-import { suggestSongStarts } from "../lib/songDetection";
-import type { Song } from "../lib/songs";
 import { errorFromUnknown } from "../lib/errors";
 import { buildImagePreviews, copyImagesToAppCache } from "../lib/images";
 import { copyPdfToAppCache, isPdfAsset, pickerCopyToCacheDirectory } from "../lib/pdf";
@@ -23,8 +21,6 @@ export type AppPhase =
   | "loadingPreviews"
   | "choosing"
   | "processing"
-  // A sliced book waits for its suggested songs to be confirmed before saving.
-  | "reviewingSongs"
   | "done"
   | "error";
 export type PageImportMode = "pdf" | "photos";
@@ -35,7 +31,6 @@ type PageImportOptions = {
   setStrips: Dispatch<SetStateAction<ReaderStrip[]>>;
   setGarbage: Dispatch<SetStateAction<ReaderStrip[]>>;
   setSelectedName: Dispatch<SetStateAction<string | null>>;
-  setSongs: Dispatch<SetStateAction<Song[]>>;
   setErrorMessage: Dispatch<SetStateAction<string | null>>;
   // Clears the open score before a new import starts.
   onBeginImport: () => void;
@@ -51,7 +46,6 @@ export function usePageImport({
   setStrips,
   setGarbage,
   setSelectedName,
-  setSongs,
   setErrorMessage,
   onBeginImport,
 }: PageImportOptions) {
@@ -63,8 +57,6 @@ export function usePageImport({
   const [selectedPageIndices, setSelectedPageIndices] = useState<Set<number>>(new Set());
   const [reorderMode, setReorderMode] = useState(false);
   const [orderSequence, setOrderSequence] = useState<number[]>([]);
-  // Song starts suggested for the score just sliced, waiting for review.
-  const [suggestedSongStarts, setSuggestedSongStarts] = useState<number[]>([]);
   const progressSubscription = useRef<ReturnType<typeof addProgressListener> | null>(null);
 
   const clearProgressSubscription = useCallback(() => {
@@ -83,33 +75,15 @@ export function usePageImport({
     setSelectedPageIndices(new Set());
     setReorderMode(false);
     setOrderSequence([]);
-    setSuggestedSongStarts([]);
   }, []);
 
-  // Shows the sliced score; a likely book first goes through song review.
   const showSlicedScore = useCallback(
     (sliced: ReaderStrip[], slicedGarbage: ReaderStrip[]) => {
       setStrips(sliced);
       setGarbage(slicedGarbage);
-      setSongs([]);
-      const starts = suggestSongStarts(sliced, slicedGarbage);
-      if (starts.length >= 2) {
-        setSuggestedSongStarts(starts);
-        setPhase("reviewingSongs");
-      } else {
-        setPhase("done");
-      }
-    },
-    [setGarbage, setPhase, setSongs, setStrips]
-  );
-
-  const finishSongReview = useCallback(
-    (songs: Song[]) => {
-      setSongs(songs);
-      setSuggestedSongStarts([]);
       setPhase("done");
     },
-    [setPhase, setSongs]
+    [setGarbage, setPhase, setStrips]
   );
 
   const clearPageSelection = useCallback(() => {
@@ -399,8 +373,6 @@ export function usePageImport({
     pickBusy,
     busyMessage,
     pickerReady,
-    suggestedSongStarts,
-    finishSongReview,
     pageImportMode,
     pendingPdfUri,
     pagePreviews,
