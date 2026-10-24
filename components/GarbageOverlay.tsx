@@ -19,6 +19,9 @@ const LIST_PADDING = 8;
 const LIST_GAP = 8;
 // Two columns once each would still be at least this wide.
 const MIN_TWO_COLUMN_WIDTH = 360;
+// Room for the page label and restore button drawn over the image; thinner
+// strips (a page number, one line of text) are centred inside this.
+const MIN_PREVIEW_HEIGHT = 52;
 
 export function GarbageOverlay({
   garbage,
@@ -68,7 +71,10 @@ export function GarbageOverlay({
           >
             {garbage.map((piece, index) => {
               const aspectRatio = piece.width > 0 ? piece.width / piece.height : 1;
-              const previewHeight = Math.min(maxPreviewHeight, previewWidth / aspectRatio);
+              const previewHeight = Math.max(
+                MIN_PREVIEW_HEIGHT,
+                Math.min(maxPreviewHeight, previewWidth / aspectRatio)
+              );
 
               return (
                 <View
